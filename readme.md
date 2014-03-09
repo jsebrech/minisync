@@ -3,6 +3,8 @@ Minisync
 
 A library for P2P synchronization of JSON data objects
 
+**Not usable yet, will update when it's ready**
+
 Capabilities
 ------------
 
