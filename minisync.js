@@ -567,12 +567,15 @@
      * @constructor
      */
     function Document(data) {
-        // TODO: support "changes object" for data parameter
         if (typeof data != 'object') throw 'Argument must be an object';
         if (isArray(data)) throw 'Argument cannot be an array';
-        Syncable.call(this, this, data);
+        var isChanges =
+            data && data._minisync && (data._minisync.dataType == 'CHANGES');
+        if (isChanges && data.changesSince) throw 'change block must be non-delta';
+        Syncable.call(this, this, isChanges ? {} : data);
         // ensure an initial state exists
         this.getDocVersion();
+        if (isChanges) this.mergeChanges(data);
     }
     Document.prototype = new Syncable(null, null);
 
@@ -656,9 +659,14 @@
         }
         var changes = this.getChangesSince(changesSince);
         return {
+            _minisync: {
+                dataType: 'CHANGES',
+                version: 1
+            },
             sentBy: this.getClientID(),
             fromVersion: this.getDocVersion(),
             clientStates: this.getClientStates(),
+            changesSince: changesSince,
             changes: changes
         };
     };
@@ -721,6 +729,9 @@
         };
         sync(this, data.changes);
         clientState.lastReceived = data.fromVersion;
+
+        // TODO: synchronize other client states
+
         // sync'ing updates the local version
         // we shouldn't send updates for versions added by sync'ing
         if (allWasSent) {

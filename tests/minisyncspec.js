@@ -419,6 +419,12 @@ describe('minisync', function() {
             expect(client2.getChanges(client1.getClientID()).changes).toBeNull();
         });
 
+        it('should merge client states across 3 clients', function() {
+            var client1 = minisync({foo: 1});
+            var client2 = minisync(client1.getChanges());
+            var client3 = minisync(client2.getChanges());
+            compareObjects(client1.data, client3.data);
+        });
     });
 
     describe('dateToString', function() {
