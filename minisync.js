@@ -575,7 +575,15 @@
         Syncable.call(this, this, isChanges ? {} : data);
         // ensure an initial state exists
         this.getDocVersion();
-        if (isChanges) this.mergeChanges(data);
+        if (isChanges) {
+            this.mergeChanges(data);
+            // for all client states, mark last confirmed send as current version
+            var clientStates = this.getClientStates();
+            for (var i = 0; i < clientStates.length; i++) {
+                var clientState = clientStates[i];
+                clientState.lastConfirmedSend = this.getDocVersion();
+            }
+        }
     }
     Document.prototype = new Syncable(null, null);
 
@@ -730,10 +738,25 @@
         sync(this, data.changes);
         clientState.lastReceived = data.fromVersion;
 
-        // TODO: synchronize other client states
+        for (var j = 0; j < data.clientStates.length; j++) {
+            remoteState = data.clientStates[j];
+            if (remoteState.clientID != this.getClientID()) {
+                var localState = this.getClientState(remoteState.clientID);
+                // update remote version that was last received
+                if (localState.lastReceived < remoteState.lastReceived) {
+                    localState.lastReceived = remoteState.lastReceived;
+                }
+                // if our state matches the state of the other client
+                // and their state matches the state of the third party
+                // the third party has received our version already
+                if (allWasSent && (data.fromVersion == remoteState.lastConfirmedSend)) {
+                    localState.lastConfirmedSend = this.getDocVersion();
+                }
+            }
+        }
 
-        // sync'ing updates the local version
-        // we shouldn't send updates for versions added by sync'ing
+        // syncing updates the local version
+        // we shouldn't send updates for versions added by syncing
         if (allWasSent) {
             clientState.lastConfirmedSend = this.getDocVersion();
         }

@@ -424,6 +424,11 @@ describe('minisync', function() {
             var client2 = minisync(client1.getChanges());
             var client3 = minisync(client2.getChanges());
             compareObjects(client1.data, client3.data);
+            expect(client3.getChanges(client1.getClientID()).changes).toBeNull();
+
+            client3.set('foo', 2);
+            client1.mergeChanges(client3.getChanges(client1.getClientID()));
+            compareObjects(client1.data, client3.data);
         });
     });
 
