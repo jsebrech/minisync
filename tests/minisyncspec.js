@@ -340,6 +340,7 @@ describe('minisync', function() {
                 if (obj1.hasOwnProperty(key)) {
                     expect(typeof obj1[key]).toEqual(typeof obj2[key]);
                     if (typeof obj1[key] === 'object') {
+                        expect(isArray(obj1[key])).toEqual(isArray(obj2[key]));
                         compareObjects(obj1[key], obj2[key]);
                     } else {
                         expect(obj1[key]).toEqual(obj2[key]);
@@ -429,6 +430,17 @@ describe('minisync', function() {
             client3.set('foo', 2);
             client1.mergeChanges(client3.getChanges(client1.getClientID()));
             compareObjects(client1.data, client3.data);
+        });
+
+        it('should sync arrays', function() {
+            // TODO: write the syncing logic
+
+            /*var client1 = minisync({a: [0, 1, 2]});
+            var client2 = minisync(client1.getChanges());
+            compareObjects(client1.data, client2.data);
+            client2.set('a[1]', 'foo');
+            client1.mergeChanges(client2.getChanges());
+            compareObjects(client1.data, client2.data);*/
         });
     });
 

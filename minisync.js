@@ -231,6 +231,7 @@
      * Return the minisync state object tied to this data object
      * Properties:
      * - id: string,
+     * - t: string, timestamp of last change
      * - u:string (last updated in version)
      * - r: string (removed in version)
      * - ri: array (for SyncableArray, [{id: string, r: string}]
@@ -247,6 +248,7 @@
         }
         return this.data._s;
     };
+
     /**
      * Update the internal state object
      * @returns {{id: string}|*|{id: *, u: string}}
@@ -257,6 +259,7 @@
         state.t = dateToString(new Date());
         return state;
     };
+
     /**
      * Return the unique id of this object
      * @returns {String}
@@ -264,6 +267,7 @@
     Syncable.prototype.getID = function() {
         return this.getState().id;
     };
+
     /**
      * Return the version the properties on this object were last updated
      * @returns {string}
@@ -271,6 +275,7 @@
     Syncable.prototype.getVersion = function() {
         return this.getState().u;
     };
+
     /**
      * Return the timestamp this object was last updated
      * @returns {String}
@@ -278,6 +283,7 @@
     Syncable.prototype.getTimeStamp = function() {
         return this.getState().t;
     };
+
     /**
      * Set a property on the data object, incrementing the version marker
      * @param key dot-separated property path
@@ -302,6 +308,7 @@
             this.updateState();
         }
     };
+
     /**
      * Get a property from the data object
      * @param key dot-separated property path
@@ -337,6 +344,7 @@
         if ((value instanceof Syncable) && value.isRemoved()) value = null;
         return value;
     };
+
     /**
      * Mark this object as removed
      */
@@ -347,6 +355,7 @@
             state.t = dateToString(new Date());
         }
     };
+
     /**
      * Returns the version at which this was removed, if any
      * @returns {String|null}
@@ -354,12 +363,14 @@
     Syncable.prototype.isRemoved = function() {
         return this.data ? this.getState().r : null;
     };
+
     /**
      * Return a data object with all the changed objects since a version
      * @param version (string)
+     * @param [resultSetter] (Function) Function that sets a value on a result object
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
-    Syncable.prototype.getChangesSince = function(version) {
+    Syncable.prototype.getChangesSince = function(version, resultSetter) {
         var result = null;
         for (var key in this.data) {
             if (this.data.hasOwnProperty(key) && (key !== '_s')) {
@@ -367,28 +378,92 @@
                 if (value.getChangesSince) {
                     value = value.getChangesSince(version);
                     if (value !== null) {
-                        if (!result) result = {};
-                        result[key] = value;
+                        if (!result) result = this.getChangesResultObject();
+                        if (!resultSetter) {
+                            result[key] = value;
+                        } else {
+                            resultSetter(result, key, value);
+                        }
                     }
                 } else {
                     if (this.getVersion() > version) {
-                        if (!result) result = {};
-                        result[key] = value;
+                        if (!result) result = this.getChangesResultObject();
+                        if (!resultSetter) {
+                            result[key] = value;
+                        } else {
+                            resultSetter(result, key, value);
+                        }
                     }
                 }
             }
         }
-        if (result) {
-            result._s = {
+        return result;
+    };
+
+    /**
+     * Returns an object containing an empty result object for this value object
+     * @private
+     * @returns {{_s: {id: String, u: string, t: String}}}
+     */
+    Syncable.prototype.getChangesResultObject = function() {
+        var result = {
+            _s: {
                 id: this.getID(),
                 u: this.getVersion(),
                 t: this.getTimeStamp()
-            };
-            if (this.isRemoved()) {
-                result._s.r = this.isRemoved()
             }
+        };
+        if (this.isRemoved()) {
+            result._s.r = this.isRemoved()
         }
         return result;
+    };
+
+    /**
+     * Merge the changes of the remote value object with the local value object
+     * @private
+     * @param changes Object containing all the key/value pairs to update
+     * @param clientState Client state for the client we're synchronizing from
+     */
+    Syncable.prototype.mergeChanges = function(changes, clientState) {
+        for (var key in changes) {
+            if (key === '_s') continue;
+            if (changes.hasOwnProperty(key)) {
+                var remoteValue = changes[key];
+                // if primitive value
+                // copy remote non-object properties to local object
+                if (!remoteValue._s) {
+                    // if the remote version of the object is newer than the last received
+                    if ( (changes._s.u > clientState.lastReceived) &&
+                        // and the property value is different from the local value
+                        (this.get(key) !== remoteValue) &&
+                        // and the local version is older the last local version
+                        // that was acknowledged by the remote (no conflict)
+                        ( (this.getVersion() <= clientState.lastConfirmedSend) ||
+                            // or the remote timestamp is not older than the local timestamp
+                            // (conflict solved in favor of remote value)
+                            (changes._s.t >= this.getTimeStamp())
+                            )
+                        )
+                    {
+                        this.set(key, remoteValue);
+                    }
+                    // synchronize child objects
+                } else {
+                    if (typeof this.get(key) !== 'object') {
+                        if (remoteValue._s.a) { // if remote is array
+                            this.set(key, []);
+                        } else { // if remote is object
+                            this.set(key, {});
+                        }
+                    }
+                    this.get(key).mergeChanges(remoteValue, clientState);
+                }
+            }
+        }
+        // TODO: synchronize array values
+
+        // TODO: synchronize removed values
     };
 
     /**
@@ -432,8 +507,22 @@
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
     SyncableArray.prototype.getChangesSince = function(version) {
-        var result = Syncable.prototype.getChangesSince.call(this, version);
-        if (result && result._s && this.getRemoved().length) {
+        return Syncable.prototype.getChangesSince.call(this, version,
+            function(result, key, value) {
+                result.v[key] = value;
+            }
+        );
+    };
+
+    /**
+     * Overridden from parent
+     * @returns {{_s: {id: String, u: string, t: String}}}
+     */
+    SyncableArray.prototype.getChangesResultObject = function() {
+        var result = Syncable.prototype.getChangesResultObject.call(this);
+        result._s.a = true;
+        result.v = [];
+        if (this.getRemoved().length) {
             result._s.ri = this.getRemoved();
         }
         return result;
@@ -680,7 +769,7 @@
     };
 
     /**
-     * Merge updates from a remote client
+     * Merge updates from a remote client, updating the data and P2P client state
      * @param data Change data
      * @returns {*} data object to send
      */
@@ -699,43 +788,8 @@
             clientState.lastConfirmedSend = remoteState.lastReceived;
         }
         var allWasSent = clientState.lastConfirmedSend === this.getDocVersion();
-        var sync = function(local, remote) {
-            for (var key in remote) {
-                if (key === '_s') continue;
-                if (remote.hasOwnProperty(key)) {
-                    var remoteValue = remote[key];
-                    // if primitive value
-                    // copy remote non-object properties to local object
-                    if (!remoteValue._s) {
-                        // if the remote version of the object is newer than the last received
-                        if ( (remote._s.u > clientState.lastReceived) &&
-                             // and the property value is different from the local value
-                             (local.get(key) !== remoteValue) &&
-                             // and the local version is older the last local version
-                             // that was acknowledged by the remote (no conflict)
-                             ( (local.getVersion() <= clientState.lastConfirmedSend) ||
-                               // or the remote timestamp is not older than the local timestamp
-                               // (conflict solved in favor of remote value)
-                               (remote._s.t >= local.getTimeStamp())
-                             )
-                           )
-                        {
-                            local.set(key, remoteValue);
-                        }
-                        // synchronize child objects
-                    } else {
-                        if (typeof local.get(key) !== 'object') {
-                           local.set(key, {});
-                        }
-                        sync(local.get(key), remoteValue);
-                    }
-                }
-            }
-            // TODO: synchronize array values
-
-            // TODO: synchronize removed values
-        };
-        sync(this, data.changes);
+        // inherited, actual merging of changes
+        Syncable.prototype.mergeChanges.call(this, data.changes, clientState);
         clientState.lastReceived = data.fromVersion;
 
         for (var j = 0; j < data.clientStates.length; j++) {
