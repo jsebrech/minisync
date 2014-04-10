@@ -276,12 +276,14 @@ describe('minisync', function() {
         });
 
         it('should implement indexOf', function() {
-            var orig = ['one', 'two', { key: 'three'}];
+            var orig = ['one', 'two', { key: 'three'}, 'four'];
             var a = minisync({test: orig}).get('test');
             expect(a.indexOf).not.toBeUndefined();
             for (var i = 0; i < orig.length; i++) {
                 expect(a.indexOf(orig[i])).toEqual(i);
             }
+            var obj = a.get(2);
+            expect(a.indexOf(obj)).toEqual(2);
         });
 
         it('should implement pop', function() {
@@ -315,14 +317,17 @@ describe('minisync', function() {
             expect(v.foo).toEqual('bar');
         });
 
-        it('should implement sort', function() {
-            var a = minisync({v: [{n: 1},{n: 3},{n: 2}]}).get('v');
-            expect(a.sort(function(a, b) {
-                if (a.n > b.n) return 1;
-                if (a.n < b.n) return -1;
-                return 0;
-            })).toEqual(a);
-            expect(a.get('[1].n')).toEqual(2);
+        it('should implement splice', function() {
+            var a = minisync({v: [1, 2, {foo: 3}, 4, 5]}).get('v');
+            var res = a.splice(2, 2, 3, {bar: 4});
+            expect(isArray(res)).toBeTruthy();
+            expect(res.length).toEqual(2);
+            expect(typeof res[0]).toEqual('object');
+            expect(res[0].foo).toEqual(3);
+            expect(res[1]).toEqual(4);
+            expect(a.get(2)).toEqual(3);
+            expect(typeof a.get(3)).toEqual('object');
+            expect(a.get('[3].bar')).toEqual(4);
         });
 
         it('should implement unshift', function() {
@@ -330,6 +335,7 @@ describe('minisync', function() {
             expect(a.unshift(1)).toEqual(2);
             expect(a.join(',')).toEqual('1,2');
         });
+
     });
 
     describe('client interaction', function() {
@@ -432,16 +438,33 @@ describe('minisync', function() {
             compareObjects(client1.data, client3.data);
         });
 
-        it('should sync arrays', function() {
-            // TODO: write the syncing logic
+        // TODO: re-enable array synchronization tests
+/*        describe('array synchronization', function() {
+            it('should synchronize primitive values', function() {
+                var c1 = minisync({a: ['test', 123, false]});
+                var c2 = minisync({});
+                c2.mergeChanges(c1.getChanges());
+                compareObjects(c1.data, c2.data);
+                c2.set('a[1]', 321);
+                c2.mergeChanges(c1.getChanges());
+                expect(c2.get('a[1]')).toEqual(321);
+                c2.get('a').pop();
+                c1.mergeChanges(c2.getChanges());
+                compareObjects(c1.data, c2.data);
+            });
 
-            /*var client1 = minisync({a: [0, 1, 2]});
-            var client2 = minisync(client1.getChanges());
-            compareObjects(client1.data, client2.data);
-            client2.set('a[1]', 'foo');
-            client1.mergeChanges(client2.getChanges());
-            compareObjects(client1.data, client2.data);*/
-        });
+            it('should synchronize object values', function() {
+                var c1 = minisync({a: [{foo: 'bar'}, {foo: 'baz'}]});
+                var c2 = minisync(c1.getChanges());
+                compareObjects(c1.data, c2.data);
+                // make sure they're fully synchronized
+                c1.mergeChanges(c2.getChanges());
+                // this doesn't update the array, but should still sync
+                c2.set('a[1].foo', {nested: true});
+                c1.mergeChanges(c2.getChanges());
+                compareObjects(c1.data, c2.data);
+            });
+        });*/
     });
 
     describe('dateToString', function() {

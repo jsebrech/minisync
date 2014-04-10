@@ -154,6 +154,16 @@
                padStr(date.getUTCSeconds(), 2);
     };
 
+    /**
+     * Returns whether two values are the same type or not
+     * @param one
+     * @param two
+     */
+    var sameType = function(one, two) {
+        if (one instanceof Syncable) one = one.data;
+        if (two instanceof Syncable) two = two.data;
+        return typeof one === typeof two;
+    };
 
 // Synchronizable object classes
 
@@ -335,7 +345,7 @@
             }
             key = index;
         }
-        value = (value.data || {})[key];
+        value = (value?value.data:null || {})[key];
         value = makeSyncable(this.document, value);
         if (keyParts.length) {
             value = value.get(keyParts.join('.'));
@@ -450,19 +460,14 @@
                     }
                     // synchronize child objects
                 } else {
-                    if (typeof this.get(key) !== 'object') {
-                        if (remoteValue._s.a) { // if remote is array
-                            this.set(key, []);
-                        } else { // if remote is object
-                            this.set(key, {});
-                        }
+                    var expectType = (remoteValue._s.a) ? [] : {};
+                    if (!sameType(this.get(key), expectType)) {
+                        this.set(key, expectType);
                     }
                     this.get(key).mergeChanges(remoteValue, clientState);
                 }
             }
         }
-        // TODO: synchronize array values
-
         // TODO: synchronize removed values
     };
 
@@ -529,17 +534,122 @@
     };
 
     /**
+     * Overridden from Syncable, merge changes for an array type
+     * @param changes
+     * @param clientState
+     */
+    SyncableArray.prototype.mergeChanges = function(changes, clientState) {
+        /*
+        Assumptions:
+
+        - changes = object with:
+          _s: state object
+          v: array of values
+
+        - v: complete array, all items from the source client are present
+        - v[i] can be primitive or object/array
+        - object values may be sparse (don't contain child values)
+
+        - when objects are moved inside the array, this is a copy+delete
+          meaning the ordering of object state id's remains the same
+          (new id's are added, old id's are removed, but the relative
+           order of existing id's never changes)
+         */
+
+        if (changes && changes._s && isArray(changes.v)) {
+            var otherIsNewer =
+                // the remote version of the array is newer than the last received
+                ( (changes._s.u > clientState.lastReceived) &&
+                  // and the local version is older the last local version
+                  // that was acknowledged by the remote (no conflict)
+                  ( (this.getVersion() <= clientState.lastConfirmedSend) ||
+                    // or the remote timestamp is not older than the local timestamp
+                    // (conflict solved in favor of remote value)
+                    (changes._s.t >= this.getTimeStamp())
+                  )
+                );
+
+            // TODO: handle removed objects
+
+            var i, localValue, remoteValue;
+            // build index mapping local object id's to positions
+            var localIDs = {};
+            for (i = 0; i < this.length(); i++) {
+                localValue = this.get(i);
+                if (localValue instanceof Syncable) {
+                    localIDs[localValue.getID()] = i;
+                }
+            }
+
+            // remote values in between objects that exist on both sides
+            var intervals = [];
+            var interval = [];
+            var lastID = null;
+            // synchronize the objects that exist on both sides
+            for (i = 0; i < changes.v.length; i++) {
+                remoteValue = changes.v[i];
+                if (remoteValue && remoteValue._s) {
+                    if (localIDs[remoteValue._s.id] !== undefined) {
+                        localValue = this.get(localIDs[remoteValue._s.id]);
+                        localValue.mergeChanges(remoteValue, clientState);
+                        if (interval.length) {
+                            intervals.push({
+                                after: lastID,
+                                before: localValue.getID(),
+                                values: interval
+                            });
+                            interval = [];
+                            lastID = localValue.getID()
+                        }
+                        continue;
+                    }
+                }
+                // primitive value or object not occurring in both, remember for next step
+                interval.push(remoteValue);
+            }
+            if (interval.length) intervals.push({
+                after: lastID,
+                before: null,
+                values: interval
+            });
+
+            // synchronize the intervals between the objects that exist on both sides
+            if (otherIsNewer) {
+                while (intervals.length) {
+                    this.mergeInterval(intervals.shift());
+                }
+            }
+        }
+    };
+
+    /**
+     * Merge a remote interval (= array of values) into a local range
+     * @param {object} interval
+     * { after: string = id, before: string = id, data: array }
+     */
+    SyncableArray.prototype.mergeInterval = function(interval) {
+        var start = interval.after ? (this.indexOf(interval.after, 0, true)+1) : 0;
+        var end = interval.before ? (this.indexOf(interval.before, 0, true)-1) : this.length() - 1;
+        var local = this.slice(start, end);
+        // TODO: handle newer objects in local interval
+        this.splice.apply(this, [start, end - start].concat(interval.data));
+    };
+
+    /**
      * Remove the item / object at the specified index
      * @param index
+     * @result {*} The removed value
      */
     SyncableArray.prototype.removeAt = function(index) {
         var item = makeSyncable(this.document, this.data.splice(index, 1).pop());
+        var result = makeRaw(item);
         var state = this.updateState();
         if (item instanceof Syncable) {
             item.remove();
             if (!isArray(state.ri)) state.ri = [];
             state.ri.push({id: item.getID(), r: state.u});
         }
+        return result;
     };
 
     /**
@@ -566,11 +676,29 @@
         }, this);
     };
 
-    SyncableArray.prototype.indexOf = function(searchElement, fromIndex) {
+    /**
+     * Array.indexOf
+     * @param searchElement
+     * @param [fromIndex]
+     * @param [isObjectID] true if the searchElement is the ID of an object
+     * @returns {*}
+     */
+    SyncableArray.prototype.indexOf = function(searchElement, fromIndex, isObjectID) {
         if (searchElement instanceof Syncable) {
-            searchElement = searchElement.data;
+            searchElement = searchElement.getID();
+            isObjectID = true;
         }
-        return this.data.indexOf(searchElement, fromIndex);
+        if (isObjectID) {
+            for (var i = 0; i < this.data.length; i++) {
+                var value = this.get(i);
+                if (value instanceof Syncable) {
+                    if (value.getID() === searchElement) return i;
+                }
+            }
+            return -1;
+        } else {
+            return this.data.indexOf(searchElement, fromIndex);
+        }
     };
 
     SyncableArray.prototype.lastIndexOf = function(searchElement, fromIndex) {
@@ -606,19 +734,33 @@
         return v;
     };
 
-    SyncableArray.prototype.sort = function(compareFunction) {
-        this.getState().u = this.document.nextDocVersion();
-        this.data.sort(compareFunction);
-        return this;
-    };
-
     /**
      * array.splice()
      * @param index position to splice at
-     * @param howMany number of elements to remove
+     * @param [howMany] number of elements to remove,
+     * @param [element1] element to insert (followed by others)
      */
-    SyncableArray.prototype.splice = function(index, howMany) {
-        // TODO: implement me
+    SyncableArray.prototype.splice = function(index, howMany, element1) {
+        var removed = [];
+        var elements = Array.prototype.slice.call(arguments, 2);
+        while (howMany-- > 0) {
+            removed.push(this.removeAt(index));
+        }
+        while (elements.length > 0) {
+            this.data.splice(index, 0, null);
+            this.set(index, elements.pop());
+        }
+        return removed;
+    };
+
+    /**
+     * array.slice()
+     * @param begin
+     * @param [end]
+     * @returns {Array}
+     */
+    SyncableArray.prototype.slice = function(begin, end) {
+        return this.data.slice(begin, end);
     };
 
     SyncableArray.prototype.unshift = function(element) {
@@ -630,10 +772,11 @@
     (function() {
         // all of these operations are supported, list taken from
         // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
+        // TODO: implement support for sort() in some way
         var arrayFns = [
             'concat', 'every', 'forEach', 'indexOf', 'join', 'lastIndexOf',
             'map', 'pop', 'push', 'reduce', 'reduceRight',
-            'reverse', 'shift', 'slice', 'some', 'sort', 'splice', 'unshift'];
+            'reverse', 'shift', 'slice', 'some', 'splice', 'unshift'];
         // generic array method
         // used for: concat, every, join, map, reduce, reduceRight, slice, some
         var createArrayFn = function(fn) {
