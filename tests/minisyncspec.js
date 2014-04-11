@@ -439,8 +439,33 @@ describe('minisync', function() {
         });
 
         // TODO: re-enable array synchronization tests
-/*        describe('array synchronization', function() {
-            it('should synchronize primitive values', function() {
+        describe('array synchronization', function() {
+            it('should merge intervals', function() {
+                var a = minisync({a: [{foo: 'bar'}, 'test', {foo: 'baz'}]}).get('a');
+                var id1 = a.get(0).getID();
+                var id2 = a.get(2).getID();
+                a.mergeInterval({after: id1, before: id2, data: ['test2', 'test3']});
+                expect(a.length()).toEqual(4);
+                expect(a.get(1)).toEqual('test2');
+                expect(a.get(2)).toEqual('test3');
+            });
+
+            it('hould extract intervals', function() {
+                var c1 = minisync({a: [{o:1},{o:2},{o:3}]});
+                var c2 = minisync(c1.getChanges());
+                c1.get('a').splice(2, 0, 3, 4)
+                c1.get('a').splice(1, 0, 1, 2);
+                c1.get('a').push(5);
+                spyOn(minisync._private.SyncableArray.prototype, 'mergeInterval').andCallFake(
+                // TODO: proper checking
+                    function(interval) {
+                        console.log(interval);
+                    }
+                );
+                c2.mergeChanges(c1.getChanges());
+            });
+
+/*            it('should synchronize primitive values', function() {
                 var c1 = minisync({a: ['test', 123, false]});
                 var c2 = minisync({});
                 c2.mergeChanges(c1.getChanges());
@@ -463,8 +488,8 @@ describe('minisync', function() {
                 c2.set('a[1].foo', {nested: true});
                 c1.mergeChanges(c2.getChanges());
                 compareObjects(c1.data, c2.data);
-            });
-        });*/
+            });*/
+        });
     });
 
     describe('dateToString', function() {

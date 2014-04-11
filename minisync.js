@@ -629,7 +629,7 @@
      */
     SyncableArray.prototype.mergeInterval = function(interval) {
         var start = interval.after ? (this.indexOf(interval.after, 0, true)+1) : 0;
-        var end = interval.before ? (this.indexOf(interval.before, 0, true)-1) : this.length() - 1;
+        var end = interval.before ? this.indexOf(interval.before, 0, true) : this.length();
         var local = this.slice(start, end);
         // TODO: handle newer objects in local interval
         this.splice.apply(this, [start, end - start].concat(interval.data));
@@ -975,7 +975,9 @@
     minisync._private = {
         nextVersion: base64.nextVersion,
         dateToString: dateToString,
-        createLongID: uid.nextLong
+        createLongID: uid.nextLong,
+        Syncable: Syncable,
+        SyncableArray: SyncableArray
     };
 
     scope.minisync = minisync;
