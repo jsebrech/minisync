@@ -436,6 +436,18 @@
      * @param clientState Client state for the client we're synchronizing from
      */
     Syncable.prototype.mergeChanges = function(changes, clientState) {
+        if (!changes) return;
+        // if the remote version of the object is newer than the last received
+        var otherIsNewer = ( changes._s &&
+            ( (changes._s.u > clientState.lastReceived) &&
+              // and the local data version is older the last local document version
+              // that was acknowledged by the remote (no conflict)
+              ( (this.getVersion() <= clientState.lastConfirmedSend) ||
+                // or the remote timestamp is not older than the local timestamp
+                // (conflict solved in favor of remote value)
+                (changes._s.t >= this.getTimeStamp())
+                )
+            ) );
         for (var key in changes) {
             if (key === '_s') continue;
             if (changes.hasOwnProperty(key)) {
@@ -444,17 +456,9 @@
                 // copy remote non-object properties to local object
                 if (!remoteValue._s) {
                     // if the remote version of the object is newer than the last received
-                    if ( (changes._s.u > clientState.lastReceived) &&
-                        // and the property value is different from the local value
-                        (this.get(key) !== remoteValue) &&
-                        // and the local version is older the last local version
-                        // that was acknowledged by the remote (no conflict)
-                        ( (this.getVersion() <= clientState.lastConfirmedSend) ||
-                            // or the remote timestamp is not older than the local timestamp
-                            // (conflict solved in favor of remote value)
-                            (changes._s.t >= this.getTimeStamp())
-                            )
-                        )
+                    if ( otherIsNewer &&
+                         // and the property value is different from the local value
+                         (this.get(key) !== remoteValue) )
                     {
                         this.set(key, remoteValue);
                     }
@@ -463,6 +467,7 @@
                     var expectType = (remoteValue._s.a) ? [] : {};
                     if (!sameType(this.get(key), expectType)) {
                         this.set(key, expectType);
+                        this.get(key).getState().u = null;
                     }
                     this.get(key).mergeChanges(remoteValue, clientState);
                 }
@@ -560,7 +565,7 @@
             var otherIsNewer =
                 // the remote version of the array is newer than the last received
                 ( (changes._s.u > clientState.lastReceived) &&
-                  // and the local version is older the last local version
+                  // and the local data version is older the last local document version
                   // that was acknowledged by the remote (no conflict)
                   ( (this.getVersion() <= clientState.lastConfirmedSend) ||
                     // or the remote timestamp is not older than the local timestamp

@@ -383,6 +383,12 @@ describe('minisync', function() {
             expect(changes.changes.foo).toEqual('baz');
         });
 
+        it('should initialize from a changes object', function() {
+            var c1 = minisync({foo: {bar: {baz: 42}}});
+            var c2 = minisync(c1.getChanges());
+            compareObjects(c1.data, c2.data);
+        });
+
         it('should merge changes for objects', function() {
             // initial sync
             var client1 = minisync({foo: 1, bar: 1});
@@ -440,6 +446,12 @@ describe('minisync', function() {
 
         // TODO: re-enable array synchronization tests
         describe('array synchronization', function() {
+/*            it('should initialize from a changes object', function() {
+                var c1 = minisync({a: [{o:1},{o:2},{o:3}]});
+                var c2 = minisync(c1.getChanges());
+                compareObjects(c1.data, c2.data);
+            });*/
+
             it('should merge intervals', function() {
                 var a = minisync({a: [{foo: 'bar'}, 'test', {foo: 'baz'}]}).get('a');
                 var id1 = a.get(0).getID();
@@ -450,9 +462,10 @@ describe('minisync', function() {
                 expect(a.get(2)).toEqual('test3');
             });
 
-            it('hould extract intervals', function() {
+            it('should extract intervals', function() {
                 var c1 = minisync({a: [{o:1},{o:2},{o:3}]});
                 var c2 = minisync(c1.getChanges());
+                console.log(c2);
                 c1.get('a').splice(2, 0, 3, 4)
                 c1.get('a').splice(1, 0, 1, 2);
                 c1.get('a').push(5);
