@@ -322,7 +322,7 @@
     /**
      * Get a property from the data object
      * @param key dot-separated property path
-     * @returns {Syncable}
+     * @returns {Syncable|SyncableArray}
      */
     Syncable.prototype.get = function(key) {
         var keyParts = String(key).split('.');
@@ -412,7 +412,7 @@
 
     /**
      * Returns an object containing an empty result object for this value object
-     * @private
+     * @protected
      * @returns {{_s: {id: String, u: string, t: String}}}
      */
     Syncable.prototype.getChangesResultObject = function() {
@@ -442,7 +442,7 @@
             ( (changes._s.u > clientState.lastReceived) &&
               // and the local data version is older the last local document version
               // that was acknowledged by the remote (no conflict)
-              ( (this.getVersion() <= clientState.lastConfirmedSend) ||
+              ( (this.getVersion() <= clientState.lastAcknowledged) ||
                 // or the remote timestamp is not older than the local timestamp
                 // (conflict solved in favor of remote value)
                 (changes._s.t >= this.getTimeStamp())
@@ -554,76 +554,148 @@
         - v: complete array, all items from the source client are present
         - v[i] can be primitive or object/array
         - object values may be sparse (don't contain child values)
-
-        - when objects are moved inside the array, this is a copy+delete
-          meaning the ordering of object state id's remains the same
-          (new id's are added, old id's are removed, but the relative
-           order of existing id's never changes)
          */
 
         if (changes && changes._s && isArray(changes.v)) {
-            var otherIsNewer =
-                // the remote version of the array is newer than the last received
-                ( (changes._s.u > clientState.lastReceived) &&
-                  // and the local data version is older the last local document version
-                  // that was acknowledged by the remote (no conflict)
-                  ( (this.getVersion() <= clientState.lastConfirmedSend) ||
-                    // or the remote timestamp is not older than the local timestamp
-                    // (conflict solved in favor of remote value)
-                    (changes._s.t >= this.getTimeStamp())
-                  )
-                );
+            // maps value id to index
+            var localIDs = this.getIdMap();
+            var remoteIDs = {};
 
-            // TODO: handle removed objects
-
-            var i, localValue, remoteValue;
-            // build index mapping local object id's to positions
-            var localIDs = {};
-            for (i = 0; i < this.length(); i++) {
-                localValue = this.get(i);
-                if (localValue instanceof Syncable) {
-                    localIDs[localValue.getID()] = i;
-                }
-            }
-
-            // remote values in between objects that exist on both sides
-            var intervals = [];
-            var interval = [];
-            var lastID = null;
-            // synchronize the objects that exist on both sides
-            for (i = 0; i < changes.v.length; i++) {
-                remoteValue = changes.v[i];
+            // synchronize all value objects present in both local and remote
+            changes.v.forEach(function(remoteValue, remoteIndex) {
                 if (remoteValue && remoteValue._s) {
-                    if (localIDs[remoteValue._s.id] !== undefined) {
-                        localValue = this.get(localIDs[remoteValue._s.id]);
+                    remoteIDs[remoteValue._s.id] = remoteIndex;
+                    var localIndex = localIDs[remoteValue._s.id];
+                    if (localIndex !== undefined) {
+                        var localValue = this.get(localIDs[remoteValue._s.id]);
                         localValue.mergeChanges(remoteValue, clientState);
-                        if (interval.length) {
-                            intervals.push({
-                                after: lastID,
-                                before: localValue.getID(),
-                                values: interval
-                            });
-                            interval = [];
-                            lastID = localValue.getID()
-                        }
-                        continue;
                     }
                 }
-                // primitive value or object not occurring in both, remember for next step
-                interval.push(remoteValue);
-            }
-            if (interval.length) intervals.push({
-                after: lastID,
-                before: null,
-                values: interval
-            });
+            }, this);
 
-            // synchronize the intervals between the objects that exist on both sides
-            if (otherIsNewer) {
-                while (intervals.length) {
-                    this.mergeInterval(intervals.shift());
+            // the remote version of the array is newer than the last received
+            var remoteChanged = (changes._s.u > clientState.lastReceived);
+            if (remoteChanged) {
+                var sortedData = this.sortByRemote(changes.v);
+                this.data.splice.apply(this.data, [0, this.data.length].concat(sortedData));
+
+                var otherIsNewer =
+                    ( remoteChanged &&
+                        // and the local data version is older the last local document version
+                        // that was acknowledged by the remote (no conflict)
+                        ( (this.getVersion() <= clientState.lastAcknowledged) ||
+                            // or the remote timestamp is not older than the local timestamp
+                            // (conflict solved in favor of remote value)
+                            (changes._s.t >= this.getTimeStamp())
+                            )
+                        );
+
+                var createIntervals = function (changes, localIDs) {
+                    var localValue, remoteValue;
+                    // remote values in between objects that exist on both sides
+                    var intervals = [];
+                    var interval = [];
+                    var lastID = null;
+                    // synchronize the objects that exist on both sides
+                    for (var i = 0; i < changes.v.length; i++) {
+                        remoteValue = changes.v[i];
+                        if (remoteValue && remoteValue._s) {
+                            if (localIDs[remoteValue._s.id] !== undefined) {
+                                localValue = this.get(localIDs[remoteValue._s.id]);
+                                if (interval.length) {
+                                    intervals.push({
+                                        after: lastID,
+                                        before: localValue.getID(),
+                                        values: interval
+                                    });
+                                    interval = [];
+                                }
+                                lastID = localValue.getID();
+                                continue;
+                            }
+                        }
+                        // primitive value or object not occurring in both, remember for next step
+                        interval.push(remoteValue);
+                    }
+                    if (interval.length) intervals.push({
+                        after: lastID,
+                        before: null,
+                        values: interval
+                    });
+                    return intervals;
+                };
+                var intervals = createIntervals.call(this, changes, localIDs);
+
+                // synchronize the intervals between the objects that exist on both sides
+                if (otherIsNewer) {
+                    while (intervals.length) {
+                        this.mergeInterval(intervals.shift());
+                    }
                 }
             }
+        }
+    };
+
+    /**
+     * Sort the local data array based on the sorting order of the remote array
+     * Does not update the local data.
+     * @param remote Array of remote data
+     * @return Array The sorted data
+     */
+    SyncableArray.prototype.sortByRemote = function(remote) {
+        var data = this.data;
+        if (!isArray(remote)) return data;
+        var localIDs = this.getIdMap();
+        // construct map of remote object ID's that also exist locally
+        var sharedIDs = [];
+        remote.forEach(function(remoteValue) {
+            if (!remoteValue || !remoteValue._s) return;
+            if (!localIDs[remoteValue._s.id]) return;
+            sharedIDs.push(remoteValue._s.id);
+        }, this);
+        // split local array into chunks
+        var chunks = [], chunk = [];
+        data.forEach(function(localValue) {
+            // if the current value is a shared value, start a new chunk
+            if (localValue && localValue._s &&
+                (sharedIDs.indexOf(localValue._s.id) >= 0)) {
+                chunks.push(chunk);
+                chunk = [localValue];
+            } else {
+                chunk.push(localValue);
+            }
+        }, this);
+        if (chunk.length) chunks.push(chunk);
+        // sort chunks by remote order
+        chunks.sort(function(a, b) {
+            // only the first chunk can be empty, so it always sorts first
+            if (!a.length) return -1;
+            if (!b.length) return 1;
+            var aPos = sharedIDs.indexOf(a[0]._s.id);
+            var bPos = sharedIDs.indexOf(b[0]._s.id);
+            if (aPos === bPos) return 0;
+            return aPos < bPos ? -1 : 1;
+        });
+        // concatenate chunks
+        data = [];
+        data = data.concat.apply(data, chunks);
+        return data;
+    };
+
+    /**
+     * Finds the next array index at which a syncable object/array exists
+     * Returns data.length if none found
+     * @param [fromIndex] If not specified, finds the first one
+     * @param [data] The array to search, optional (uses this.data if not specified)
+     * @return int
+     */
+    SyncableArray.prototype.findNextObject = function(fromIndex, data) {
+        fromIndex = fromIndex || 0;
+        data = data || this.data;
+        if (!isArray(data)) return null;
+        while (true) {
+            if (data[fromIndex] && data[fromIndex]._s) return fromIndex;
+            if (fromIndex > data.length) return data.length;
         }
     };
 
@@ -637,7 +709,24 @@
         var end = interval.before ? this.indexOf(interval.before, 0, true) : this.length();
         var local = this.slice(start, end);
         // TODO: handle newer objects in local interval
-        this.splice.apply(this, [start, end - start].concat(interval.data));
+        this.splice.apply(this, [start, end - start].concat(interval.values));
+    };
+
+    /**
+     * Returns object mapping value object id to index in array where it is found
+     * @return object
+     */
+    SyncableArray.prototype.getIdMap = function() {
+        var i, localValue;
+        // build index mapping local object id's to positions
+        var localIDs = {};
+        for (i = 0; i < this.length(); i++) {
+            localValue = this.get(i);
+            if (localValue instanceof Syncable) {
+                localIDs[localValue.getID()] = i;
+            }
+        }
+        return localIDs;
     };
 
     /**
@@ -675,6 +764,7 @@
     };
 
     SyncableArray.prototype.forEach = function(callback, thisArg) {
+        // TODO: polyfill forEach
         this.data.forEach(function(value, index, arr) {
             value = makeSyncable(this.document, value);
             return callback.call(thisArg, value, index, arr);
@@ -818,7 +908,7 @@
             var clientStates = this.getClientStates();
             for (var i = 0; i < clientStates.length; i++) {
                 var clientState = clientStates[i];
-                clientState.lastConfirmedSend = this.getDocVersion();
+                clientState.lastAcknowledged = this.getDocVersion();
             }
         }
     }
@@ -856,7 +946,7 @@
     /**
      * Get the state object for a remote client
      * @param {String} clientID
-     * @return {*} state object = {clientID, lastConfirmedSend, lastReceived}
+     * @return {*} state object = {clientID, lastAcknowledged, lastReceived}
      */
     Document.prototype.getClientState = function(clientID) {
         var states = this.getClientStates();
@@ -871,7 +961,7 @@
             clientID: clientID,
             // local version last confirmed as received remotely
             // we should send only newer versions than this
-            lastConfirmedSend: null,
+            lastAcknowledged: null,
             // remote version that was last received
             // we can ignore older remote versions than this
             lastReceived: null
@@ -900,7 +990,7 @@
         var changesSince = null;
         if (clientID) {
             var clientState = this.getClientState(clientID);
-            changesSince = clientState.lastConfirmedSend;
+            changesSince = clientState.lastAcknowledged;
         }
         var changes = this.getChangesSince(changesSince);
         return {
@@ -932,10 +1022,10 @@
                 break;
             }
         }
-        if (remoteState && (clientState.lastConfirmedSend < remoteState.lastReceived)) {
-            clientState.lastConfirmedSend = remoteState.lastReceived;
+        if (remoteState && (clientState.lastAcknowledged < remoteState.lastReceived)) {
+            clientState.lastAcknowledged = remoteState.lastReceived;
         }
-        var allWasSent = clientState.lastConfirmedSend === this.getDocVersion();
+        var allWasSent = clientState.lastAcknowledged === this.getDocVersion();
         // inherited, actual merging of changes
         Syncable.prototype.mergeChanges.call(this, data.changes, clientState);
         clientState.lastReceived = data.fromVersion;
@@ -951,8 +1041,8 @@
                 // if our state matches the state of the other client
                 // and their state matches the state of the third party
                 // the third party has received our version already
-                if (allWasSent && (data.fromVersion == remoteState.lastConfirmedSend)) {
-                    localState.lastConfirmedSend = this.getDocVersion();
+                if (allWasSent && (data.fromVersion == remoteState.lastAcknowledged)) {
+                    localState.lastAcknowledged = this.getDocVersion();
                 }
             }
         }
@@ -960,7 +1050,7 @@
         // syncing updates the local version
         // we shouldn't send updates for versions added by syncing
         if (allWasSent) {
-            clientState.lastConfirmedSend = this.getDocVersion();
+            clientState.lastAcknowledged = this.getDocVersion();
         }
     };
 

@@ -41,42 +41,45 @@ Theory of operation: two participants
 Assume two clients: Alice and Bob
 
 They each have a copy of the object. The object is locally versioned.
-Each property of that object which it iself also an object (or array) is locally versioned as well.
+Each property of that object which is itself also an object (or array) is locally versioned as well.
 This means that for a nested JSON structure, each object or array in the nesting
 has its own version. The top-level object is called a document, and it has a
 document version.
 
 Alice and Bob each keep this data about each other at the document level:
 
-- last received: the **remote** document version that was last received from the other
-- last confirmed send: the **local** document version that was last acknowledged by the other as being received
+- last received: the **remote** document version that was last received from the other party
+- last acknowledged: the **local** document version that was last acknowledged by the other as being received
 
-Note yet again that the version is local on each side,
-so a direct comparison of versions is not possible.
+It is important to note that since the version is local on each side,
+a direct comparison of versions is not possible. Since each side may independently
+add many versions to the document, a global version cannot be maintained.
 
 Alice however knows what changes to send to Bob,
-these are all the local values newer than the 'last confirmed send',
+these are all the local values newer than the 'last acknowledged',
 which is everything that Bob hasn't confirmed to Alice as being received by him.
 
-**Step 1: Alice sends all objects from the document newer than 'last confirmed send' to Bob**
+**Step 1: Alice sends all objects from the document newer than 'last acknowledged' to Bob**
 
 She also sends him the 'last received', aka the version in Bob's versioning scheme that he last sent her.
 
 **Step 2: Bob receives the update from Alice, and...**
 
-- He updates the 'last confirmed send' from Alice to the 'last received' alice acknowledged to him
+- He updates the 'last acknowledged' for Alice to the 'last received' Alice acknowledged to him
 - He updates each local value with the one from Alice's changes, if...
-    - The value's version in Alice's versioning scheme is newer than 'last received'
-    - The local value doesn't have a UTC timestamp newer than Alice's value
+    - The value's version according to Alice is newer than the previously received version from Alice ('last received').
+      In other words, it is a newer value than Alice previously sent Bob.
+    - The local value doesn't have a UTC timestamp newer than Alice's value.
+      In other words, Bob and Alice didn't make a conflicting edit.
+- He updates the 'last received' for Alice to indicate which version of hers that he is up to date with
 
-Note that the timestamp is only needed for resolving conflicting changes on both sides.
+The timestamp is only needed for resolving conflicting changes on both sides.
 Accurate timekeeping is not an absolute necessity for the algorithm,
-it just improves its behavior by ensuring older data never overwrites newer data.
+it just improves the behavior by ensuring the newest change wins.
 
 While doing this, the local object version increases.
-Bob is smart enough to update the 'last confirmed send' to match the new document version
-if Alice already had the latest version from Bob, to prevent an infinite loop of updates
-being sent around.
+In order to avoid an infinite loop of updates, Bob sets the 'last acknowledged' to the
+new local document version if Alice had already acknowledged Bob's latest version.
 
 Of course, now Alice needs to be told what Bob received.
 
@@ -84,7 +87,8 @@ Of course, now Alice needs to be told what Bob received.
 
 **Step 4: Alice synchronizes the changes object in the same way that Bob did before**
 
-The result is that Alice and Bob now agree on the content of the object.
+The result is that Alice and Bob now agree on the content of the object,
+and they both know the other has the latest version of the object.
 
 Theory of operation: 3 participants
 -----------------------------------
@@ -96,7 +100,7 @@ Bob exchanges the document with Charlie, and sends along the information he has 
 Now Charlie knows these things:
 
 - The document, as agreed between Alice and Bob, possibly with additional changes by Bob
-- The version of Bob that was last confirmed by Alice as received by her
+- The version of Bob that was last acknowledged by Alice as received by her
 - The version of Bob that was last sent to Charlie
 - The version of Alice that she last sent to Bob
 - The version of Alice last received by Charlie, as this matches the version last received by Bob.
@@ -104,14 +108,15 @@ Now Charlie knows these things:
 When Alice sends changes to Charlie, Charlie now is smart enough to ignore
 all values older than the version of Alice that he last received (through Bob).
 
-Charlie may also know if his own local version was last confirmed by Alice, if:
+Charlie does not need to communicate directly with Alice,
+he knows that his own local version was last acknowledged by Alice if:
 
-- The version of Charlie last confirmed by Bob is Charlie's current version
-- The version of Bob last confirmed by Alice is Bob's current version
+- Alice has acknowledged Bob's current version to Bob
+- Bob has acknowleged Charlie's current version to Charlie
 
 The first time Charlie sends changes to Alice, he will either send everything,
-if he couldn't confirm that his own location version matched the last confirmed version by Alice,
-or he will send only his own local changes, if he did confirm it before making changes himself.
+if he couldn't confirm that his own local version matched the last acknowledged version by Alice,
+or he will send only his own local changes otherwise.
 
 In the worst case scenario, when Charlie syncs to Alice for the first time
 and Alice does not know Charlie exists before this sync because Bob didn't tell her,
