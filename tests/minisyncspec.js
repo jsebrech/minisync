@@ -525,6 +525,28 @@ describe('minisync', function() {
                 expect(c2.get('a[3].o')).toEqual(3);
             });
 
+            it('should synchronize in both directions', function() {
+                var c1 = minisync({ a: [{o: 1}, {o: 2}]});
+                var c2 = minisync(c1.getChanges());
+                var a1 = c1.get('a');
+                a1.splice(1, 0, {r: 1});
+                a1.push({r: 2});
+                var a2 = c2.get('a');
+                a2.splice(1, 0, {l: 1});
+                a2.unshift({l: 2});
+                c2.mergeChanges(c1.getChanges());
+                // c2.a = [{l:2},{o:1},{r:1},{l:1},{o:2},{r:2}]
+                expect(c2.get('a').length()).toEqual(6);
+                expect(c2.get('a[0].l')).toEqual(2);
+                expect(c2.get('a[1].o')).toEqual(1);
+                expect(c2.get('a[2].r')).toEqual(1);
+                expect(c2.get('a[3].l')).toEqual(1);
+                expect(c2.get('a[4].o')).toEqual(2);
+                expect(c2.get('a[5].r')).toEqual(2);
+                c1.mergeChanges(c2.getChanges());
+                compareObjects(c1.getData(), c2.getData());
+            });
+
             // TODO: test that inserts objects in both clients, then syncs
             // to stress-test the mergeInterval logic
         });

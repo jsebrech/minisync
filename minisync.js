@@ -741,7 +741,7 @@
         local.forEach(function(value) {
             if (value && value._s) values.push(value);
         });
-        this.splice.apply(this, [start, end - start].concat(values));
+        Array.prototype.splice.apply(this.data, [start, end - start].concat(values));
     };
 
     /**
