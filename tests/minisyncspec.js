@@ -510,6 +510,23 @@ describe('minisync', function() {
                 c1.mergeChanges(c2.getChanges());
                 compareObjects(c1.data, c2.data);
             });
+
+            it('should keep new local object values', function() {
+                var c1 = minisync({ a: [{o: 1}, {o: 2}]});
+                var c2 = minisync(c1.getChanges());
+                c1.set('a[1].o', 3);
+                c1.get('a').splice(1, 0, 5);
+                c2.get('a').splice(1, 0, {l: 1});
+                c2.mergeChanges(c1.getChanges());
+                expect(c2.get('a').length()).toEqual(4);
+                expect(c2.get('a[0].o')).toEqual(1);
+                expect(c2.get('a[1]')).toEqual(5);
+                expect(c2.get('a[2].l')).toEqual(1);
+                expect(c2.get('a[3].o')).toEqual(3);
+            });
+
+            // TODO: test that inserts objects in both clients, then syncs
+            // to stress-test the mergeInterval logic
         });
     });
 
