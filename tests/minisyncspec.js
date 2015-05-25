@@ -546,9 +546,6 @@ describe('minisync', function() {
                 c1.mergeChanges(c2.getChanges());
                 compareObjects(c1.getData(), c2.getData());
             });
-
-            // TODO: test that inserts objects in both clients, then syncs
-            // to stress-test the mergeInterval logic
         });
     });
 
