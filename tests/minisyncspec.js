@@ -444,6 +444,15 @@ describe('minisync', function() {
             compareObjects(client1.data, client3.data);
         });
 
+        it('should merge removed objects', function() {
+            var client1 = minisync({foo: {o:1}, bar: {o:2}});
+            var client2 = minisync(client1.getChanges());
+            compareObjects(client1.data, client2.data);
+            client1.get('bar').remove();
+            client2.mergeChanges(client1.getChanges());
+            expect(client2.get('bar')).toBeNull();
+        });
+
         describe('array synchronization', function() {
             it('should initialize from a changes object', function() {
                 var c1 = minisync({a: [{o:1},{o:2},{o:3}]});
@@ -545,6 +554,16 @@ describe('minisync', function() {
                 expect(c2.get('a[5].r')).toEqual(2);
                 c1.mergeChanges(c2.getChanges());
                 compareObjects(c1.getData(), c2.getData());
+            });
+
+            it('should merge removed objects', function() {
+                var c1 = minisync({a: [{o: 1}, {o: 2}, {o: 3}]});
+                var c2 = minisync(c1.getChanges());
+                c1.get('a').splice(1, 1);
+                c2.mergeChanges(c1.getChanges());
+                expect(c2.get('a').length()).toEqual(2);
+                expect(c2.get('a[0].o')).toEqual(1);
+                expect(c2.get('a[1].o')).toEqual(3);
             });
         });
     });

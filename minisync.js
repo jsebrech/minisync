@@ -364,9 +364,10 @@
     /**
      * Get a property from the data object
      * @param key dot-separated property path
+     * @param [ifRemoved] also return it if it was removed
      * @returns {Syncable|SyncableArray}
      */
-    Syncable.prototype.get = function(key) {
+    Syncable.prototype.get = function(key, ifRemoved) {
         var keyParts = String(key).split('.');
         key = keyParts.shift();
         var value = this;
@@ -393,7 +394,7 @@
             value = value.get(keyParts.join('.'));
         }
         // don't return removed values
-        if ((value instanceof Syncable) && value.isRemoved()) value = null;
+        if ((value instanceof Syncable) && value.isRemoved() && !ifRemoved) value = null;
         return value;
     };
 
@@ -426,7 +427,7 @@
         var result = null;
         for (var key in this.data) {
             if (this.data.hasOwnProperty(key) && (key !== '_s')) {
-                var value = this.get(key);
+                var value = this.get(key, true);
                 if (value.getChangesSince) {
                     value = value.getChangesSince(version);
                     if (value !== null) {
@@ -515,7 +516,10 @@
                 }
             }
         }
-        // TODO: synchronize removed values
+        // if the other was removed, remove it here also,
+        // even if the local value is newer
+        var otherIsRemoved = changes._s && changes._s.r;
+        if (otherIsRemoved) this.remove();
     };
 
     /**
@@ -599,6 +603,17 @@
          */
 
         if (changes && changes._s && isArray(changes.v)) {
+            // remove items that were removed remotely
+            if (isArray(changes._s.ri)) {
+                changes._s.ri.forEach(function(removed) {
+                    this.forEach(function (value, index) {
+                        if (value && value.getID && (value.getID() === removed.id)) {
+                            this.splice(index, 1);
+                        }
+                    }, this);
+                }, this);
+            }
+
             // maps value id to index
             var localIDs = this.getIdMap();
             var remoteIDs = {};
