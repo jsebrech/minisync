@@ -338,22 +338,23 @@ describe('minisync', function() {
 
     });
 
-    describe('client interaction', function() {
-
-        var compareObjects = function(obj1, obj2) {
-            for (var key in obj1) {
-                if (key === '_s') continue;
-                if (obj1.hasOwnProperty(key)) {
-                    expect(typeof obj1[key]).toEqual(typeof obj2[key]);
-                    if (typeof obj1[key] === 'object') {
-                        expect(isArray(obj1[key])).toEqual(isArray(obj2[key]));
-                        compareObjects(obj1[key], obj2[key]);
-                    } else {
-                        expect(obj1[key]).toEqual(obj2[key]);
-                    }
+    var compareObjects = function(obj1, obj2, path) {
+        for (var key in obj1) {
+            if (key === '_s') continue;
+            if (obj1.hasOwnProperty(key)) {
+                var testing = (path || '') + '[' + key + ']';
+                expect(typeof obj1[key]).toEqual(typeof obj2[key]);
+                if (typeof obj1[key] === 'object') {
+                    expect(isArray(obj1[key])).toEqual(isArray(obj2[key]));
+                    compareObjects(obj1[key], obj2[key], testing);
+                } else {
+                    expect(obj1[key]).toEqual(obj2[key]);
                 }
             }
-        };
+        }
+    };
+
+    describe('client interaction', function() {
 
         it('should have a unique client id', function() {
             var c1 = minisync({foo: 'bar'});
@@ -582,4 +583,23 @@ describe('minisync', function() {
         });
     });
 
+    describe('persistence', function() {
+        it('should persist and restore', function() {
+            var o1 = minisync({
+                foo: 'bar',
+                baz: [
+                    'quu',
+                    { qux: 'xyzzy'}
+                ]
+            });
+            var s = o1.getChanges();
+            var o2 = minisync.restore(s);
+            // o1 and o2 should be identical
+            expect(o2.getClientID()).toEqual(o1.getClientID());
+            expect(o2.getDocVersion()).toEqual(o1.getDocVersion());
+            console.log(o1, o2);
+            compareObjects(o1.data, o2.data);
+            // TODO: synchronize client states
+        });
+    });
 });
