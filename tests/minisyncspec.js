@@ -338,15 +338,15 @@ describe('minisync', function() {
 
     });
 
-    var compareObjects = function(obj1, obj2, path) {
+    var compareObjects = function(obj1, obj2, include_s, path) {
         for (var key in obj1) {
-            if (key === '_s') continue;
+            if (!include_s && (key === '_s')) continue;
             if (obj1.hasOwnProperty(key)) {
                 var testing = (path || '') + '[' + key + ']';
                 expect(typeof obj1[key]).toEqual(typeof obj2[key]);
                 if (typeof obj1[key] === 'object') {
                     expect(isArray(obj1[key])).toEqual(isArray(obj2[key]));
-                    compareObjects(obj1[key], obj2[key], testing);
+                    compareObjects(obj1[key], obj2[key], include_s, testing);
                 } else {
                     expect(obj1[key]).toEqual(obj2[key]);
                 }
@@ -567,6 +567,8 @@ describe('minisync', function() {
                 expect(c2.get('a[1].o')).toEqual(3);
             });
         });
+
+        // TODO: write test for example from readme
     });
 
     describe('dateToString', function() {
@@ -592,14 +594,14 @@ describe('minisync', function() {
                     { qux: 'xyzzy'}
                 ]
             });
-            var s = o1.getChanges();
+            // create a remote client state
+            o1.getChanges("alice");
+            var s = JSON.parse(JSON.stringify(o1.getChanges()));
             var o2 = minisync.restore(s);
             // o1 and o2 should be identical
             expect(o2.getClientID()).toEqual(o1.getClientID());
             expect(o2.getDocVersion()).toEqual(o1.getDocVersion());
-            console.log(o1, o2);
-            compareObjects(o1.data, o2.data);
-            // TODO: synchronize client states
+            compareObjects(o1.data, o2.data, true);
         });
     });
 });

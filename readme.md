@@ -1,9 +1,72 @@
 Minisync
 ========
 
-A library for P2P synchronization of JSON data objects
+A library for P2P synchronization of JSON data objects, 
+enabling a set of peers to synchronize changes to a JSON object without relying on a central server.
 
 **Not usable yet, will update when it's ready**
+
+Usage
+-----
+
+Client 1: Alice
+
+    // create from scratch
+    var data = minisync({ foo: 'initial state goes here' });
+    // this client is known as 'alice'
+    data.setClientID('alice');
+    // make changes
+    data.set('foo', {bar: ['baz']});
+    data.set('foo.bar[1]', 'quu');
+    // get a changes object that contains everything (can be sent to any client)
+    var changes = data.getChanges();
+    // send this changes object to bob
+    ...
+    // persist locally for later restore
+    localStorage.setItem('mydocument', JSON.stringify(changes);
+    
+    ... later ...
+    
+    // restore from earlier saved state
+    var data = minisync.restore(JSON.parse(localStorage.getItem('mydocument'));
+    // receive changes from bob
+    data.mergeChanges(bobsdelta);
+    // make a change
+    data.set('foo.bar', []);
+    // get a changes object for bob (delta containing only changes new to bob)
+    var delta = data.getChanges('bob');
+    // send changes object to bob
+    ...
+
+    
+Client 2: Bob
+    
+    // create document initially from master changes object received from alice
+    var data = minisync(changes);
+    // this client is known as bob
+    data.setClientID('bob');
+    // make a change
+    data.get('foo.bar').push('foo you too');
+    // make delta object for alice
+    var delta = data.getChanges('alice');
+    
+    ... later ...
+    
+    // merge delta changes from alice
+    data.mergeChanges(alicesdelta);
+    
+Clients can merge in any and all directions, they just need to have a shared ancestry
+by initially creating an object from the result of getChanges of any other client.
+
+Client ID's can be auto-generated. Just call getClientID() to obtain the current client's id.
+
+Supported API's:
+- set(path, value) can be used to set any object's property, or specific entries in an array.
+- get(arraypath) returns an object that provides the complete array API
+- get(objectpath) returns an object that supports the get() and set() API's. 
+Only properties set through these methods are synchronized.
+- getData() returns a cleaned up data object held inside the minisync object
+- minisync only supports JSON data, you cannot set properties on arrays.
 
 Capabilities
 ------------
@@ -26,14 +89,10 @@ causing data loss across all clients when a new minisync version is deployed!
 Also:
 
 - Data can only be changed through the minisync() api.
-- Only an object can be synchronized, but the object can have arbitrary nested properties.
-- Conflicting changes are resolved through "last one wins" principle.
+- Only an object can be synchronized, but the object can have arbitrary nested properties, including arrays.
+- Arrays do not properly support sorting yet.
+- Conflicting changes are resolved through "latest change wins" principle.
 - Synchronizes at the level of objects and arrays (see below for details).
-
-Usage
------
-
-TODO (check the unit tests for now)
 
 Theory of operation: two participants
 -------------------------------------

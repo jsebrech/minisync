@@ -672,9 +672,10 @@
                     var intervals = [];
                     var interval = [];
                     var lastID = null;
+                    var v = changes.v || [];
                     // synchronize the objects that exist on both sides
-                    for (var i = 0; i < changes.v.length; i++) {
-                        remoteValue = changes.v[i];
+                    for (var i = 0; i < v.length; i++) {
+                        remoteValue = v[i];
                         if (remoteValue && remoteValue._s) {
                             if (localIDs[remoteValue._s.id] !== undefined) {
                                 localValue = this.get(localIDs[remoteValue._s.id]);
@@ -979,6 +980,7 @@
             Syncable.call(this, this, data.changes, true);
             this.setClientID(data.sentBy);
             this.setDocVersion(data.fromVersion);
+            this.setClientStates(data.clientStates);
         } else { // first init from raw data
             Syncable.call(this, this, data);
             // ensure an initial state exists
@@ -1000,6 +1002,7 @@
     /**
      * Change the unique client ID of the document on this machine
      * @param {string} id
+     * @internal
      */
     Document.prototype.setClientID = function(id) {
         this.getState().clientID = id;
@@ -1018,6 +1021,7 @@
     /**
      * Set the version of this document to a different one
      * @param {string} v
+     * @internal
      */
     Document.prototype.setDocVersion = function(v) {
         this.getState().v = v;
@@ -1066,6 +1070,16 @@
         var state = this.getState();
         if (!state.remote) state.remote = [];
         return state.remote;
+    };
+
+    /**
+     * Set a new array of remote client states
+     * @param states
+     * @internal
+     */
+    Document.prototype.setClientStates = function(states) {
+        var state = this.getState();
+        state.remote = states || [];
     };
 
     /**
@@ -1142,8 +1156,6 @@
             clientState.lastAcknowledged = this.getDocVersion();
         }
     };
-
-    // TODO: persistence of documents (Document.save() and minisync.open() with localStorage default implementation)
 
     // TODO: P2P communication mechanism (default implementation)
 
