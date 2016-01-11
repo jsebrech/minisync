@@ -4,7 +4,10 @@ Minisync
 A library for P2P synchronization of JSON data objects, 
 enabling a set of peers to synchronize changes to a JSON object without relying on a central server.
 
-**Not usable yet, will update when it's ready**
+Version
+-------
+
+- 0.1.0 - initial release, only tested by unit tests
 
 Usage
 -----
