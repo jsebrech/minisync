@@ -1,0 +1,20 @@
+{
+  "name": "minisync",
+  "main": "minisync.js",
+  "homepage": "https://github.com/jsebrech/minisync",
+  "authors": [
+    "Joeri Sebrechts <joeri@sebrechts.net>"
+  ],
+  "description": "P2P synchronization of JSON data",
+  "moduleType": [
+    "globals"
+  ],
+  "license": "Apache 2.0",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
