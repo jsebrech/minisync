@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": true,
+    "preserveConstEnums": true,
+    "outDir": "bin/",
+    "sourceMap": true
+  },
+  "files": [
+    "minisync.ts"
+  ]
+}

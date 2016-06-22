@@ -12,6 +12,8 @@ Version
 Usage
 -----
 
+Include bin/minisync.js in your page. Include polyfill.js for old IE versions.
+
 Client 1: Alice
 
     // create from scratch
@@ -70,6 +72,18 @@ Supported API's:
 Only properties set through these methods are synchronized.
 - getData() returns a cleaned up data object held inside the minisync object
 - minisync only supports JSON data, you cannot set properties on arrays.
+
+Changing
+--------
+
+Edit minisync.ts
+
+To build a new version:
+
+     npm install -g typescript # just once
+     tsc # after every change
+
+Launch tests/testrunner.html to test changes.
 
 Capabilities
 ------------
