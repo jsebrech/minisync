@@ -1,6 +1,6 @@
 {
   "name": "minisync",
-  "main": "minisync.js",
+  "main": "bin/minisync.js",
   "homepage": "https://github.com/jsebrech/minisync",
   "authors": [
     "Joeri Sebrechts <joeri@sebrechts.net>"
