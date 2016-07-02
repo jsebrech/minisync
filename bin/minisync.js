@@ -3,22 +3,29 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var Minisync;
-(function (Minisync) {
+(function (factory) {
+    if (typeof module === 'object' && typeof module.exports === 'object') {
+        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === 'function' && define.amd) {
+        define(["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
     /**
      * Base 64 encode/decode (6 bits per character)
      * (not MIME compatible)
      */
     var base64 = (function () {
         // characters are in ascii string sorting order
-        var base64chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^_abcdefghijklmnopqrstuvwxyz';
+        var base64chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^_abcdefghijklmnopqrstuvwxyz";
         /**
          * Convert the integer portion of a Number to a base64 string
          * @param num
          * @returns string
          */
         function floatToBase64(num) {
-            var ret = '';
+            var ret = "";
             num = Math.floor(num);
             while (num) {
                 var chr = num - (Math.floor(num / 64) * 64);
@@ -37,7 +44,7 @@ var Minisync;
          * @returns {string}
          */
         function nextVersion(v, minLength) {
-            if (v === void 0) { v = ''; }
+            if (v === void 0) { v = ""; }
             if (minLength === void 0) { minLength = 1; }
             // handles initial version case
             // as well as padding to the appropriate length
@@ -115,7 +122,7 @@ var Minisync;
      * @returns {boolean}
      */
     var isArray = function (v) {
-        return Object.prototype.toString.call(v) === '[object Array]';
+        return Object.prototype.toString.call(v) === "[object Array]";
     };
     /**
      * Left-pad a string to the desired length with zeroes
@@ -126,7 +133,7 @@ var Minisync;
     function padStr(arg, length) {
         var str = String(arg);
         while (str.length < length)
-            str = '0' + str;
+            str = "0" + str;
         return str;
     }
     /**
@@ -189,7 +196,7 @@ var Minisync;
                 this.getState();
                 if (restore) {
                     for (var key in this.data) {
-                        if (this.data.hasOwnProperty(key) && (key !== '_s')) {
+                        if (this.data.hasOwnProperty(key) && (key !== "_s")) {
                             var value = makeSyncable(this.document, this.data[key], true);
                             if (value instanceof Syncable) {
                                 this.data[key] = value.data;
@@ -208,10 +215,10 @@ var Minisync;
             if (this.isRemoved())
                 return null;
             var result = this.data;
-            if (typeof this.data == 'object') {
+            if (typeof this.data == "object") {
                 result = {};
                 for (var i in this.data) {
-                    if (this.data.hasOwnProperty(i) && (i !== '_s')) {
+                    if (this.data.hasOwnProperty(i) && (i !== "_s")) {
                         var v = makeSyncable(this.document, this.data[i]);
                         if (v instanceof Syncable) {
                             if (v.isRemoved())
@@ -224,8 +231,8 @@ var Minisync;
                     }
                 }
             }
-            if (result && result['_s'])
-                delete result['_s'];
+            if (result && result["_s"])
+                delete result["_s"];
             return result;
         };
         /**
@@ -249,10 +256,10 @@ var Minisync;
          */
         Syncable.prototype.getState = function () {
             if (!this.data)
-                throw 'data property not set';
+                throw "data property not set";
             if (!this.data._s) {
                 if (!this.document)
-                    throw 'document property not set';
+                    throw "document property not set";
                 var s = {
                     id: uid.next(),
                     u: null,
@@ -302,15 +309,15 @@ var Minisync;
         Syncable.prototype.set = function (key, value) {
             // convert Syncable instances back into basic JSON
             value = makeRaw(value);
-            var keyParts = String(key).split('.');
+            var keyParts = String(key).split(".");
             key = keyParts.pop();
             // foo.bar
             if (keyParts.length) {
-                this.get(keyParts.join('.')).set(key, value);
+                this.get(keyParts.join(".")).set(key, value);
             }
-            else if (key.substr(-1) == ']') {
-                var index = key.substr(0, key.length - 1).split('[').pop();
-                key = key.split('[').slice(0, -1).join('[');
+            else if (key.substr(-1) == "]") {
+                var index = key.substr(0, key.length - 1).split("[").pop();
+                key = key.split("[").slice(0, -1).join("[");
                 this.get(key).set(index, value);
             }
             else if (!this.isRemoved()) {
@@ -325,22 +332,22 @@ var Minisync;
          * @returns {Syncable|SyncableArray}
          */
         Syncable.prototype.get = function (key, ifRemoved) {
-            var keyParts = String(key).split('.');
+            var keyParts = String(key).split(".");
             key = keyParts.shift();
             var value = this;
             // [1], foo[1], foo[1][2]
-            if (key.indexOf('[') >= 0) {
+            if (key.indexOf("[") >= 0) {
                 // foo[1], foo[1][2]
-                if (key.indexOf('[') > 0) {
+                if (key.indexOf("[") > 0) {
                     // strip off "foo", keep [1], [1][2]
-                    value = value.get(key.split('[').shift());
-                    key = key.substr(key.indexOf('['));
+                    value = value.get(key.split("[").shift());
+                    key = key.substr(key.indexOf("["));
                 }
                 // copy out last array index
-                var index = key.substr(0, key.length - 1).split('[').pop();
+                var index = key.substr(0, key.length - 1).split("[").pop();
                 // if there are nested indices (e.g. [1][2])
-                if (key.split('[').length > 2) {
-                    key = key.split('[').slice(0, -1).join('[');
+                if (key.split("[").length > 2) {
+                    key = key.split("[").slice(0, -1).join("[");
                     value = value.get(key);
                 }
                 key = index;
@@ -348,7 +355,7 @@ var Minisync;
             value = (value ? value.getInternalData() : null || {})[key];
             value = makeSyncable(this.document, value);
             if (keyParts.length) {
-                value = value.get(keyParts.join('.'));
+                value = value.get(keyParts.join("."));
             }
             // don't return removed values
             if ((value instanceof Syncable) && value.isRemoved() && !ifRemoved)
@@ -381,7 +388,7 @@ var Minisync;
         Syncable.prototype.getChangesSince = function (version, resultSetter) {
             var result = null;
             for (var key in this.data) {
-                if (this.data.hasOwnProperty(key) && (key !== '_s')) {
+                if (this.data.hasOwnProperty(key) && (key !== "_s")) {
                     var value = this.get(key, true);
                     if (value.getChangesSince) {
                         value = value.getChangesSince(version);
@@ -449,7 +456,7 @@ var Minisync;
                         // (conflict solved in favor of remote value)
                         (changes._s.t >= this.getTimeStamp()))));
             Object.keys(changes).forEach(function (key) {
-                if (key === '_s')
+                if (key === "_s")
                     return;
                 var remoteValue = changes[key];
                 // if primitive value
@@ -484,7 +491,7 @@ var Minisync;
         if (isArray(data) || restoringArray) {
             return new SyncableArray(document, data, restore);
         }
-        else if ((typeof data == 'object') && !(data instanceof Syncable)) {
+        else if ((typeof data == "object") && !(data instanceof Syncable)) {
             return new Syncable(document, data, restore);
         }
         else
@@ -569,11 +576,11 @@ var Minisync;
         SyncableArray.prototype.mergeChanges = function (changes, clientState) {
             /*
              Assumptions:
-
+    
              - changes = object with:
              _s: state object
              v: array of values
-
+    
              - v: complete array, all items from the source client are present
              - v[i] can be primitive or object/array
              - object values may be sparse (don't contain child values)
@@ -819,8 +826,8 @@ var Minisync;
             var item = this.data.slice().pop();
             var index = this.lastIndexOf(item);
             this.removeAt(index);
-            if (item && item['_s'])
-                delete item['_s'];
+            if (item && item["_s"])
+                delete item["_s"];
             return item;
         };
         SyncableArray.prototype.push = function () {
@@ -835,7 +842,7 @@ var Minisync;
         SyncableArray.prototype.shift = function () {
             if (!this.data || !this.data.length)
                 return null;
-            var v = makeRaw(this.get('0'));
+            var v = makeRaw(this.get("0"));
             this.removeAt(0);
             return v;
         };
@@ -949,13 +956,13 @@ var Minisync;
          * @constructor Document
          */
         function Document(data, restore) {
-            if (typeof data != 'object')
-                throw 'Argument must be an object';
+            if (typeof data != "object")
+                throw "Argument must be an object";
             if (isArray(data))
-                throw 'Argument cannot be an array';
-            var isChanges = data && data._minisync && (data._minisync.dataType == 'CHANGES');
+                throw "Argument cannot be an array";
+            var isChanges = data && data._minisync && (data._minisync.dataType == "CHANGES");
             if (isChanges && data.changesSince)
-                throw 'change block must be non-delta';
+                throw "change block must be non-delta";
             var shouldMerge = isChanges && !restore;
             var shouldRestore = isChanges && restore;
             _super.call(this);
@@ -1086,7 +1093,7 @@ var Minisync;
             var changes = this.getChangesSince(changesSince);
             return {
                 _minisync: {
-                    dataType: 'CHANGES',
+                    dataType: "CHANGES",
                     version: 1
                 },
                 sentBy: this.getClientID(),
@@ -1145,21 +1152,23 @@ var Minisync;
     }(Syncable));
     // TODO: P2P communication mechanism (default implementation)
     // Public API
-    var minisync = function (data) {
-        return new Document(data || {});
-    };
-    minisync.createID = uid.next;
-    minisync.restore = function (data) {
+    function from(data, restore) {
+        return new Document(data || {}, restore);
+    }
+    exports.from = from;
+    function createID() { return uid.next(); }
+    exports.createID = createID;
+    function restore(data) {
         return new Document(data || {}, true);
-    };
+    }
+    exports.restore = restore;
     // Private API exposed for unit tests only
-    minisync._private = {
+    exports._private = {
         nextVersion: base64.nextVersion,
         dateToString: dateToString,
         createLongID: uid.nextLong,
         Syncable: Syncable,
         SyncableArray: SyncableArray
     };
-    window['minisync'] = minisync;
-})(Minisync || (Minisync = {}));
+});
 //# sourceMappingURL=minisync.js.map

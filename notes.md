@@ -200,7 +200,7 @@ Alternate approach to interval merging (handles sorting elegantly):
 JSON syncing API
 ----------------
 
-    var o = minisync(someobject); // someobject must be object or array
+    var o = minisync.from(someobject); // someobject must be object or array
     o.getChangesSince(version);
     o.getChangesFor(clientid); // clientid is optional when sending to new clients
     o.mergeChanges(data, clientid); // clientid is optional
@@ -213,9 +213,9 @@ JSON syncing API
     o.get('property').get('otherproperty'); // cascades down object hierarchy
 
     // for arrays:
-    o = minisync([]);
+    o = minisync.from([]);
     o.set(0, 'foo').set(1, 'bar'); // o.getData() == ['foo', 'bar']
-    o = minisync({ foo: [] });
+    o = minisync.from({ foo: [] });
     o.set('foo[1]', 'bar'); // o.getData() == { foo: [null, 'bar'] }
     o.push(object);
     o.splice(...);

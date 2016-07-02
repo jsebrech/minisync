@@ -8,16 +8,19 @@ Version
 -------
 
 - 0.1.0 - initial release, only tested by unit tests
+- 0.2.0 - migrated to typescript, changed minisync() to minisync.from()
 
 Usage
 -----
 
-Include bin/minisync.js in your page. Include polyfill.js for old IE versions.
+Include polyfill.js for old IE versions or environments that lack Array.forEach.
+Drop the file in your scripts folder
+Use [RequireJS](http://requirejs.org/docs/start.html) to load.
 
 Client 1: Alice
 
     // create from scratch
-    var data = minisync({ foo: 'initial state goes here' });
+    var data = minisync.from({ foo: 'initial state goes here' });
     // this client is known as 'alice'
     data.setClientID('alice');
     // make changes
@@ -47,7 +50,7 @@ Client 1: Alice
 Client 2: Bob
     
     // create document initially from master changes object received from alice
-    var data = minisync(changes);
+    var data = minisync.from(changes);
     // this client is known as bob
     data.setClientID('bob');
     // make a change
@@ -105,7 +108,7 @@ causing data loss across all clients when a new minisync version is deployed!
 
 Also:
 
-- Data can only be changed through the minisync() api.
+- Data can only be changed through the minisync api.
 - Only an object can be synchronized, but the object can have arbitrary nested properties, including arrays.
 - Arrays do not properly support sorting yet.
 - Conflicting changes are resolved through "latest change wins" principle.

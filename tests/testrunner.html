@@ -1,48 +1,48 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <title>Testrunner</title>
-  <link rel="stylesheet" type="text/css" href="jasmine-1.3.1/jasmine.css">
-  <script type="text/javascript" src="jasmine-1.3.1/jasmine.js"></script>
-  <script type="text/javascript" src="jasmine-1.3.1/jasmine-html.js"></script>
+    <title>Testrunner</title>
+    <link rel="stylesheet" type="text/css" href="jasmine-1.3.1/jasmine.css">
+    <script type="text/javascript" src="jasmine-1.3.1/jasmine.js"></script>
+    <script type="text/javascript" src="jasmine-1.3.1/jasmine-html.js"></script>
 
-  <!-- include source files here... -->
-  <script type="text/javascript" src="../polyfill.js"></script>
-  <script type="text/javascript" src="../bin/minisync.js"></script>
+    <!-- include source files here... -->
+    <script type="text/javascript" src="../polyfill.js"></script>
 
-  <!-- include spec files here... -->
-  <script type="text/javascript" src="minisyncspec.js"></script>
-
-  <script type="text/javascript">
-    (function() {
-      var jasmineEnv = jasmine.getEnv();
-      jasmineEnv.updateInterval = 1000;
-
-      var htmlReporter = new jasmine.HtmlReporter();
-
-      jasmineEnv.addReporter(htmlReporter);
-
-      jasmineEnv.specFilter = function(spec) {
-        return htmlReporter.specFilter(spec);
-      };
-
-      var currentWindowOnload = window.onload;
-
-      window.onload = function() {
-        if (currentWindowOnload) {
-          currentWindowOnload();
+    <script type="text/javascript">
+        var require = {
+            paths: {
+                bin: "../bin"
+            }
         }
-        execJasmine();
-      };
+    </script>
+    <script type="text/javascript" src="require.js"></script>
 
-      function execJasmine() {
+    <!-- include spec files here... -->
+    <script type="text/javascript" src="minisyncspec.js"></script>
+
+    <script type="text/javascript">
+    requirejs(['bin/minisync'], function(minisync) {
+        window.minisync = minisync;
+        var jasmineEnv = jasmine.getEnv();
+        jasmineEnv.updateInterval = 1000;
+
+        var htmlReporter = new jasmine.HtmlReporter();
+
+        jasmineEnv.addReporter(htmlReporter);
+
+        jasmineEnv.specFilter = function(spec) {
+            return htmlReporter.specFilter(spec);
+        };
+
         jasmineEnv.execute();
-      }
-
-    })();
+    });
   </script>
 </head>
+
 <body>
 
 </body>
+
 </html>
