@@ -7,7 +7,8 @@
   ],
   "description": "P2P synchronization of JSON data",
   "moduleType": [
-    "globals"
+    "amd",
+    "node"
   ],
   "license": "Apache-2.0",
   "ignore": [
