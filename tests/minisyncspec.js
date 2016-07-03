@@ -454,6 +454,45 @@ describe('minisync', function() {
             expect(client2.get('bar')).toBeNull();
         });
 
+
+        it('should implement the example from the readme', function() {
+            var alice = minisync.from({ foo: 'initial state goes here' });
+            // this client is known as 'alice'
+            alice.setClientID('alice');
+            // make changes
+            alice.set('foo', {bar: ['baz']});
+            alice.set('foo.bar[1]', 'quu');
+            // get a changes object that contains everything (can be sent to any client)
+            var changes = JSON.parse(JSON.stringify(alice.getChanges()));
+
+            // create document initially from master changes object received from alice
+            var bob = minisync.from(changes);
+            // this client is known as bob
+            bob.setClientID('bob');
+            // make a change
+            bob.get('foo.bar').push('foo you too');
+            // make delta object for alice
+            var bobsdelta = JSON.stringify(bob.getChanges('alice'));
+
+            alice = minisync.restore(changes);
+            // receive changes from bob
+            alice.mergeChanges(JSON.parse(bobsdelta));
+
+            // should be identical at this point
+            compareObjects(alice.data, bob.data);
+
+            // make a change
+            alice.set('foo.bar', []);
+            // get a changes object for bob (delta containing only changes new to bob)
+            var alicesdelta = JSON.stringify(alice.getChanges('bob'));
+
+            // merge delta changes from alice
+            bob.mergeChanges(JSON.parse(alicesdelta));
+
+            // should be identical again
+            compareObjects(alice.data, bob.data);
+        });
+
         describe('array synchronization', function() {
             it('should initialize from a changes object', function() {
                 var c1 = minisync.from({a: [{o:1},{o:2},{o:3}]});
@@ -566,44 +605,6 @@ describe('minisync', function() {
                 expect(c2.get('a[0].o')).toEqual(1);
                 expect(c2.get('a[1].o')).toEqual(3);
             });
-        });
-
-        it('should implement the example from the readme', function() {
-            var alice = minisync.from({ foo: 'initial state goes here' });
-            // this client is known as 'alice'
-            alice.setClientID('alice');
-            // make changes
-            alice.set('foo', {bar: ['baz']});
-            alice.set('foo.bar[1]', 'quu');
-            // get a changes object that contains everything (can be sent to any client)
-            var changes = JSON.parse(JSON.stringify(alice.getChanges()));
-
-            // create document initially from master changes object received from alice
-            var bob = minisync.from(changes);
-            // this client is known as bob
-            bob.setClientID('bob');
-            // make a change
-            bob.get('foo.bar').push('foo you too');
-            // make delta object for alice
-            var bobsdelta = JSON.stringify(bob.getChanges('alice'));
-
-            alice = minisync.restore(changes);
-            // receive changes from bob
-            alice.mergeChanges(JSON.parse(bobsdelta));
-
-            // should be identical at this point
-            compareObjects(alice.data, bob.data);
-
-            // make a change
-            alice.set('foo.bar', []);
-            // get a changes object for bob (delta containing only changes new to bob)
-            var alicesdelta = JSON.stringify(alice.getChanges('bob'));
-
-            // merge delta changes from alice
-            bob.mergeChanges(JSON.parse(alicesdelta));
-
-            // should be identical again
-            compareObjects(alice.data, bob.data);
         });
 
     });

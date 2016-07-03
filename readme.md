@@ -13,7 +13,7 @@ Version
 Usage
 -----
 
-Include polyfill.js for old IE versions or environments that lack Array.forEach.
+Include src/polyfill.js for old IE versions or environments that lack Array.forEach.
 Drop the file in your scripts folder
 Use [RequireJS](http://requirejs.org/docs/start.html) or CommonJS to load.
 

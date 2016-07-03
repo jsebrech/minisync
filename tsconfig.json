@@ -1,12 +1,17 @@
 {
-  "compilerOptions": {
-    "module": "umd",
-    "noImplicitAny": true,
-    "preserveConstEnums": true,
-    "outDir": "bin/",
-    "sourceMap": true
-  },
-  "files": [
-    "minisync.ts"
-  ]
+    "compilerOptions": {
+        "module": "umd",
+        "noImplicitAny": true,
+        "preserveConstEnums": true,
+        "outDir": "bin/",
+        "sourceMap": true
+    },
+    "files": [
+        "src/base64.ts",
+        "src/types.ts",
+        "src/uid.ts",
+        "src/syncable.ts",
+        "src/document.ts",
+        "src/minisync.ts"
+    ]
 }
