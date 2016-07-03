@@ -8,12 +8,12 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "types", "uid"], factory);
+        define(["require", "exports", "./types", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var types_1 = require("types");
-    var uid = require("uid");
+    var types_1 = require("./types");
+    var uid = require("./uid");
     /**
      * JSON object wrapper which tracks changes inside the JSON object
      */
@@ -628,12 +628,12 @@ var __extends = (this && this.__extends) || function (d, b) {
             return result;
         };
         /**
-         * Returns the array of removed id's
+         * Returns the array of removed object id's
          * @returns {Array}
          */
         SyncableArray.prototype.getRemoved = function () {
             var state = this.getState();
-            return (state ? state.ri : []) || [];
+            return state ? (state.ri || []) : [];
         };
         /**
          * Returns the length of the array

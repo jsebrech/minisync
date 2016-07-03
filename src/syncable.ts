@@ -1,6 +1,6 @@
-import {TODO, isArray, dateToString} from "types";
-import * as uid from "uid";
-import Document from "document";
+import {TODO, isArray, dateToString} from "./types";
+import * as uid from "./uid";
+import Document from "./document";
 
 /**
  * JSON object wrapper which tracks changes inside the JSON object
@@ -100,7 +100,7 @@ export class Syncable {
      *              = removed item id's and version they were removed)
      * @returns {*}
      */
-    public getState(): TODO {
+    public getState(): State {
         if (!this.data) throw "data property not set";
         if (!this.data._s) {
             if (!this.document) throw "document property not set";
@@ -119,7 +119,7 @@ export class Syncable {
      * Update the internal state object
      * @returns {{id: string}|*|{id: *, u: string}}
      */
-    public updateState(): TODO {
+    public updateState(): State {
         let state = this.getState();
         state.u = this.document.nextDocVersion();
         state.t = dateToString(new Date());
@@ -634,12 +634,12 @@ export class SyncableArray extends Syncable {
     }
 
     /**
-     * Returns the array of removed id's
+     * Returns the array of removed object id's
      * @returns {Array}
      */
-    public getRemoved(): Array<string> {
+    public getRemoved(): Array<ArrayRemovedObject> {
         let state = this.getState();
-        return (state ? state.ri : []) || [];
+        return state ? (state.ri || []) : [];
     }
 
     /**
@@ -826,6 +826,9 @@ interface State {
     r?: string; // removed in version
     a?: boolean; // true if this is the state for an array
     ri?: Array<ArrayRemovedObject>; // for arrays, list of removed objects
+    // only for Document objects
+    v?: string; // the document-level version
+    clientID?: string; // the client id for the local client managing the document
 }
 
 interface ArrayRemovedObject {

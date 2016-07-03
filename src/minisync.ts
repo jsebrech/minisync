@@ -1,8 +1,8 @@
-import {Syncable, SyncableArray} from "syncable";
-import Document from "document";
-import {TODO, dateToString} from "types";
-import * as uid from "uid";
-import * as base64 from "base64";
+import {Syncable, SyncableArray} from "./syncable";
+import Document from "./document";
+import {TODO, dateToString} from "./types";
+import * as uid from "./uid";
+import * as base64 from "./base64";
 
 // TODO: P2P communication mechanism (default implementation)
 

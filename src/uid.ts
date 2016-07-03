@@ -2,8 +2,8 @@
  * Unique ID generator
  */
 
-import {padStr} from "types";
-import * as base64 from "base64";
+import {padStr} from "./types";
+import * as base64 from "./base64";
 
 interface LastUid {
     at: number;
@@ -34,7 +34,7 @@ function create(): string {
         // uid = 15 bits of random + 32/33 bits of time
         let uid: number = (random * Math.pow(2, 32)) + seconds;
         // end result is 47/48 bit random number
-        // keep track of generated id's to avoid collisions
+        // paranoia: keep track of generated id's to avoid collisions
         if (lastUid.uids.indexOf(uid) === -1) {
             lastUid.uids.push(uid);
             return padStr(base64.encodeFloat(uid), 8);

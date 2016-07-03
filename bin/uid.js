@@ -6,12 +6,12 @@
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "types", "base64"], factory);
+        define(["require", "exports", "./types", "./base64"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var types_1 = require("types");
-    var base64 = require("base64");
+    var types_1 = require("./types");
+    var base64 = require("./base64");
     var lastUid = { at: null, uids: [] };
     /**
      * Returns a character string which is locally unique
@@ -34,7 +34,7 @@
             // uid = 15 bits of random + 32/33 bits of time
             var uid = (random * Math.pow(2, 32)) + seconds;
             // end result is 47/48 bit random number
-            // keep track of generated id's to avoid collisions
+            // paranoia: keep track of generated id's to avoid collisions
             if (lastUid.uids.indexOf(uid) === -1) {
                 lastUid.uids.push(uid);
                 return types_1.padStr(base64.encodeFloat(uid), 8);

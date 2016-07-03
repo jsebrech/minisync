@@ -8,17 +8,19 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "base64", "uid", "syncable", "types"], factory);
+        define(["require", "exports", "./base64", "./uid", "./syncable", "./types"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var base64 = require("base64");
-    var uid = require("uid");
-    var syncable_1 = require("syncable");
-    var types_1 = require("types");
+    var base64 = require("./base64");
+    var uid = require("./uid");
+    var syncable_1 = require("./syncable");
+    var types_1 = require("./types");
     /**
      * Represents a single syncable document (top-level JSON object or array)
      * Keeps track of client state for this document across all the clients.
+     * The Document is composed out of Syncable instances (wrappers around objects or arrays),
+     * and primitive values. It can be nested arbitrarily deep, but all Syncables link back to the master Document.
      */
     var Document = (function (_super) {
         __extends(Document, _super);

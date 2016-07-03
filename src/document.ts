@@ -1,11 +1,13 @@
-import * as base64 from "base64";
-import * as uid from "uid";
-import {Syncable} from "syncable";
-import {TODO, isArray} from "types";
+import * as base64 from "./base64";
+import * as uid from "./uid";
+import {Syncable} from "./syncable";
+import {TODO, isArray} from "./types";
 
 /**
  * Represents a single syncable document (top-level JSON object or array)
  * Keeps track of client state for this document across all the clients.
+ * The Document is composed out of Syncable instances (wrappers around objects or arrays),
+ * and primitive values. It can be nested arbitrarily deep, but all Syncables link back to the master Document.
  */
 export default class Document extends Syncable {
 
