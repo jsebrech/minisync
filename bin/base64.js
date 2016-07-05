@@ -1,7 +1,3 @@
-/**
- * Base 64 encode/decode (6 bits per character)
- * (not MIME compatible)
- */
 (function (factory) {
     if (typeof module === 'object' && typeof module.exports === 'object') {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
@@ -11,6 +7,10 @@
     }
 })(function (require, exports) {
     "use strict";
+    /**
+     * Base 64 encode/decode (6 bits per character)
+     * (not MIME compatible)
+     */
     // characters are in ascii string sorting order
     var base64chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ^_abcdefghijklmnopqrstuvwxyz";
     /**

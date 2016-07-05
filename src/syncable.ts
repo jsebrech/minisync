@@ -1,4 +1,4 @@
-import {TODO, isArray, dateToString} from "./types";
+import {TODO, isArray, dateToString, State, ClientState, Version, AnyWithState, ArrayWithState, ArrayRemovedObject} from "./types";
 import * as uid from "./uid";
 import Document from "./document";
 
@@ -138,7 +138,7 @@ export class Syncable {
      * Return the version the properties on this object were last updated
      * @returns {string}
      */
-    public getVersion(): string {
+    public getVersion(): Version {
         return this.getState().u;
     }
 
@@ -181,7 +181,7 @@ export class Syncable {
      * @param [ifRemoved] also return it if it was removed
      * @returns {Syncable|SyncableArray}
      */
-    public get(key: string, ifRemoved?: boolean): TODO {
+    public get(key: string, ifRemoved?: boolean): Syncable | SyncableArray | any {
         let keyParts = String(key).split(".");
         key = keyParts.shift();
         let value: Syncable = this;
@@ -237,8 +237,8 @@ export class Syncable {
      * @param [resultSetter] (Function) Function that sets a value on a result object
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
-    public getChangesSince(version: string, resultSetter?: TODO): TODO {
-        let result: TODO = null;
+    public getChangesSince(version: Version, resultSetter?: (result: AnyWithState, key: string, value: any) => void): AnyWithState {
+        let result: AnyWithState = null;
         for (let key in this.data) {
             if (this.data.hasOwnProperty(key) && (key !== "_s")) {
                 let value = this.get(key, true);
@@ -292,19 +292,20 @@ export class Syncable {
      * @param changes Object containing all the key/value pairs to update
      * @param clientState Client state for the client we're synchronizing from
      */
-    public mergeChanges(changes: AnyWithState, clientState: TODO): void {
+    public mergeChanges(changes: AnyWithState, clientState: ClientState): void {
         if (!changes) return;
         // if the remote version of the object is newer than the last received
         let otherIsNewer: boolean = ( changes._s &&
-        ( (changes._s.u > clientState.lastReceived) &&
-            // and the local data version is older the last local document version
-            // that was acknowledged by the remote (no conflict)
-        ( (this.getVersion() <= clientState.lastAcknowledged) ||
-            // or the remote timestamp is not older than the local timestamp
-            // (conflict solved in favor of remote value)
-        (changes._s.t >= this.getTimeStamp())
-        )
-        ) );
+            ( (changes._s.u > clientState.lastReceived) &&
+                // and the local data version is older the last local document version
+                // that was acknowledged by the remote (no conflict)
+                ( (this.getVersion() <= clientState.lastAcknowledged) ||
+                    // or the remote timestamp is not older than the local timestamp
+                    // (conflict solved in favor of remote value)
+                    (changes._s.t >= this.getTimeStamp())
+                )
+            )
+        );
         Object.keys(changes).forEach(function(key: string) {
             if (key === "_s") return;
             let remoteValue: TODO = changes[key];
@@ -406,7 +407,7 @@ export class SyncableArray extends Syncable {
      * @param version (string)
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
-    public getChangesSince(version: string): TODO {
+    public getChangesSince(version: Version): TODO {
         return super.getChangesSince(version,
             function(result: TODO, key: string, value: TODO): void {
                 result.v[key] = value;
@@ -433,7 +434,7 @@ export class SyncableArray extends Syncable {
      * @param changes
      * @param clientState
      */
-    public mergeChanges(changes: TODO, clientState: TODO): void {
+    public mergeChanges(changes: TODO, clientState: ClientState): void {
         /*
          Assumptions:
 
@@ -819,35 +820,9 @@ export class SyncableArray extends Syncable {
     // TODO: implement support for sort() in some way
 }
 
-interface State {
-    id: string; // id of this state object
-    u: string; // version of last update
-    t: string; // timestamp of last change (iso string)
-    r?: string; // removed in version
-    a?: boolean; // true if this is the state for an array
-    ri?: Array<ArrayRemovedObject>; // for arrays, list of removed objects
-    // only for Document objects
-    v?: string; // the document-level version
-    clientID?: string; // the client id for the local client managing the document
-}
-
-interface ArrayRemovedObject {
-    id: string; // object with this state object id
-    r: string; // was removed in this version
-}
-
 interface SyncableArrayData {
     _s: State;
     v: Array<any>;
-}
-
-interface AnyWithState {
-    [index: string]: any;
-    _s: State;
-}
-
-interface ArrayWithState extends Array<any> {
-    _s: State;
 }
 
 /**

@@ -184,43 +184,48 @@ var __extends = (this && this.__extends) || function (d, b) {
          * @returns {*} data object to send
          */
         Document.prototype.mergeChanges = function (data) {
-            // state of remote client as stored in this copy of the document
-            var clientState = this.getClientState(data.sentBy);
-            // state of this client as stored in the remote copy of the document
-            var remoteState = null;
-            for (var i = 0; i < data.clientStates.length; i++) {
-                if (data.clientStates[i].clientID == this.getClientID()) {
-                    remoteState = data.clientStates[i];
-                    break;
-                }
-            }
-            if (remoteState && (clientState.lastAcknowledged < remoteState.lastReceived)) {
-                clientState.lastAcknowledged = remoteState.lastReceived;
-            }
-            var allWasSent = clientState.lastAcknowledged === this.getDocVersion();
-            // inherited, actual merging of changes
-            syncable_1.Syncable.prototype.mergeChanges.call(this, data.changes, clientState);
-            clientState.lastReceived = data.fromVersion;
-            for (var j = 0; j < data.clientStates.length; j++) {
-                remoteState = data.clientStates[j];
-                if (remoteState.clientID != this.getClientID()) {
-                    var localState = this.getClientState(remoteState.clientID);
-                    // update remote version that was last received
-                    if (localState.lastReceived < remoteState.lastReceived) {
-                        localState.lastReceived = remoteState.lastReceived;
-                    }
-                    // if our state matches the state of the other client
-                    // and their state matches the state of the third party
-                    // the third party has received our version already
-                    if (allWasSent && (data.fromVersion == remoteState.lastAcknowledged)) {
-                        localState.lastAcknowledged = this.getDocVersion();
+            if (data) {
+                // state of remote client as stored in this copy of the document
+                var clientState = this.getClientState(data.sentBy);
+                // state of this client as stored in the remote copy of the document
+                var remoteState = null;
+                for (var i = 0; i < data.clientStates.length; i++) {
+                    if (data.clientStates[i].clientID == this.getClientID()) {
+                        remoteState = data.clientStates[i];
+                        break;
                     }
                 }
+                if (remoteState && (clientState.lastAcknowledged < remoteState.lastReceived)) {
+                    clientState.lastAcknowledged = remoteState.lastReceived;
+                }
+                var allWasSent = clientState.lastAcknowledged === this.getDocVersion();
+                // inherited, actual merging of changes
+                _super.prototype.mergeChanges.call(this, data.changes, clientState);
+                clientState.lastReceived = data.fromVersion;
+                for (var j = 0; j < data.clientStates.length; j++) {
+                    remoteState = data.clientStates[j];
+                    if (remoteState.clientID != this.getClientID()) {
+                        var localState = this.getClientState(remoteState.clientID);
+                        // update remote version that was last received
+                        if (localState.lastReceived < remoteState.lastReceived) {
+                            localState.lastReceived = remoteState.lastReceived;
+                        }
+                        // if our state matches the state of the other client
+                        // and their state matches the state of the third party
+                        // the third party has received our version already
+                        if (allWasSent && (data.fromVersion == remoteState.lastAcknowledged)) {
+                            localState.lastAcknowledged = this.getDocVersion();
+                        }
+                    }
+                }
+                // syncing updates the local version
+                // we shouldn't send updates for versions added by syncing
+                if (allWasSent) {
+                    clientState.lastAcknowledged = this.getDocVersion();
+                }
             }
-            // syncing updates the local version
-            // we shouldn't send updates for versions added by syncing
-            if (allWasSent) {
-                clientState.lastAcknowledged = this.getDocVersion();
+            else {
+                throw "Invalid changes object";
             }
         };
         return Document;

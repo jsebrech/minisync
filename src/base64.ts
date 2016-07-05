@@ -1,3 +1,5 @@
+import {Version} from "./types";
+
 /**
  * Base 64 encode/decode (6 bits per character)
  * (not MIME compatible)
@@ -32,7 +34,7 @@ function floatToBase64(num: number): string {
  * the standard > operator.
  * @returns {string}
  */
-function nextVersion(v: string = "", minLength: number = 1): string {
+function nextVersion(v: Version = "", minLength: number = 1): Version {
     // handles initial version case
     // as well as padding to the appropriate length
     while (v.length < minLength) {
