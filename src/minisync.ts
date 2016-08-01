@@ -1,6 +1,7 @@
 import {Syncable, SyncableArray} from "./syncable";
 import Document from "./document";
-import {TODO, dateToString} from "./types";
+import ChangesObject from "./document";
+import {dateToString, ClientID} from "./types";
 import * as uid from "./uid";
 import * as base64 from "./base64";
 
@@ -8,15 +9,15 @@ import * as base64 from "./base64";
 
 // Public API
 
-export function from (data: TODO, restore?: boolean): Document {
+export function from (data: ChangesObject | any, restore?: boolean): Document {
     return new Document(data || {}, restore);
 }
 
-export function createID(): string {
+export function createID(): ClientID {
     return uid.next();
 }
 
-export function restore(data: TODO): Document {
+export function restore(data: ChangesObject | any): Document {
   return new Document(data || {}, true);
 }
 

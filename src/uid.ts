@@ -2,7 +2,7 @@
  * Unique ID generator
  */
 
-import {padStr} from "./types";
+import {padStr, ClientID} from "./types";
 import * as base64 from "./base64";
 
 interface LastUid {
@@ -17,7 +17,7 @@ let lastUid: LastUid = { at: null, uids: [] };
  * It is based on the current date/time and Math.random
  * @returns string 8 characters, base64 = 48 bits
  */
-function create(): string {
+function create(): ClientID {
     // base64.encodeFloat needs a 48 bit number to get 8 chars
     while (true) {
         // seconds = 32 bits (until 2038), 33 bits afterwards
@@ -46,7 +46,7 @@ function create(): string {
  * Add 48 bits of randomness to standard 8 char uid
  * @return {string} 16 character string
  */
-function createLong(): string {
+function createLong(): ClientID {
     let random = Math.floor(
         (Math.random() * Math.pow(2, 47)) +
         (Math.random() * Math.pow(2, 32))

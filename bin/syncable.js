@@ -182,7 +182,7 @@ var __extends = (this && this.__extends) || function (d, b) {
          * Get a property from the data object
          * @param key dot-separated property path
          * @param [ifRemoved] also return it if it was removed
-         * @returns {Syncable|SyncableArray}
+         * @returns {Syncable|SyncableArray|any}
          */
         Syncable.prototype.get = function (key, ifRemoved) {
             var keyParts = String(key).split(".");

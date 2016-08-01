@@ -1,4 +1,7 @@
-import {TODO, isArray, dateToString, State, ClientState, Version, AnyWithState, ArrayWithState, ArrayRemovedObject} from "./types";
+import {
+    isArray, dateToString, ObjectID, State, ClientState, Version,
+    AnyWithState, ArrayWithState, AnyValue, ArrayRemovedObject
+} from "./types";
 import * as uid from "./uid";
 import Document from "./document";
 
@@ -179,7 +182,7 @@ export class Syncable {
      * Get a property from the data object
      * @param key dot-separated property path
      * @param [ifRemoved] also return it if it was removed
-     * @returns {Syncable|SyncableArray}
+     * @returns {Syncable|SyncableArray|any}
      */
     public get(key: string, ifRemoved?: boolean): Syncable | SyncableArray | any {
         let keyParts = String(key).split(".");
@@ -237,7 +240,7 @@ export class Syncable {
      * @param [resultSetter] (Function) Function that sets a value on a result object
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
-    public getChangesSince(version: Version, resultSetter?: (result: AnyWithState, key: string, value: any) => void): AnyWithState {
+    public getChangesSince(version: Version, resultSetter?: (result: AnyWithState, key: string | number, value: any) => void): AnyWithState {
         let result: AnyWithState = null;
         for (let key in this.data) {
             if (this.data.hasOwnProperty(key) && (key !== "_s")) {
@@ -308,7 +311,7 @@ export class Syncable {
         );
         Object.keys(changes).forEach(function(key: string) {
             if (key === "_s") return;
-            let remoteValue: TODO = changes[key];
+            let remoteValue: any = changes[key];
             // if primitive value
             // copy remote non-object properties to local object
             if (!remoteValue._s) {
@@ -320,7 +323,7 @@ export class Syncable {
                 }
                 // synchronize child objects
             } else {
-                let expectType: TODO = (remoteValue._s.a) ? [] : {};
+                let expectType: any = (remoteValue._s.a) ? [] : {};
                 if (!sameType(this.get(key), expectType)) {
                     this.set(key, expectType);
                     this.get(key).getState().u = null;
@@ -407,9 +410,9 @@ export class SyncableArray extends Syncable {
      * @param version (string)
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
-    public getChangesSince(version: Version): TODO {
+    public getChangesSince(version: Version): AnyWithState {
         return super.getChangesSince(version,
-            function(result: TODO, key: string, value: TODO): void {
+            function(result: SyncableArrayData, key: number, value: any): void {
                 result.v[key] = value;
             }
         );
@@ -419,14 +422,14 @@ export class SyncableArray extends Syncable {
      * Overridden from parent
      * @returns {{_s: {id: String, u: string, t: String}}}
      */
-    public getChangesResultObject(): AnyWithState {
-        let result: TODO = super.getChangesResultObject();
+    public getChangesResultObject(): SyncableArrayData {
+        let result: any = super.getChangesResultObject();
         result._s.a = true;
         result.v = [];
         if (this.getRemoved().length) {
             result._s.ri = this.getRemoved();
         }
-        return result;
+        return <SyncableArrayData>result;
     }
 
     /**
@@ -434,7 +437,7 @@ export class SyncableArray extends Syncable {
      * @param changes
      * @param clientState
      */
-    public mergeChanges(changes: TODO, clientState: ClientState): void {
+    public mergeChanges(changes: SyncableArrayData, clientState: ClientState): void {
         /*
          Assumptions:
 
@@ -450,8 +453,8 @@ export class SyncableArray extends Syncable {
         if (changes && changes._s && isArray(changes.v)) {
             // remove items that were removed remotely
             if (isArray(changes._s.ri)) {
-                changes._s.ri.forEach(function(removed: TODO) {
-                    this.forEach(function (value: TODO, index: number): void {
+                changes._s.ri.forEach(function(removed: ArrayRemovedObject) {
+                    this.forEach(function (value: Syncable|any, index: number): void {
                         if (value && value.getID && (value.getID() === removed.id)) {
                             this.splice(index, 1);
                         }
@@ -460,11 +463,11 @@ export class SyncableArray extends Syncable {
             }
 
             // maps value id to index
-            let localIDs: TODO = this.getIdMap();
-            let remoteIDs: TODO = {};
+            let localIDs: IDMap = this.getIdMap();
+            let remoteIDs: IDMap = {};
 
             // synchronize all value objects present in both local and remote
-            changes.v.forEach(function(remoteValue: TODO, remoteIndex: number): void {
+            changes.v.forEach(function(remoteValue: AnyWithState, remoteIndex: number): void {
                 if (remoteValue && remoteValue._s) {
                     remoteIDs[remoteValue._s.id] = remoteIndex;
                     let localIndex = localIDs[remoteValue._s.id];
@@ -492,13 +495,13 @@ export class SyncableArray extends Syncable {
                     )
                     );
 
-                let createIntervals: TODO = function (changes: TODO, localIDs: TODO) {
-                    let localValue: TODO, remoteValue: TODO;
+                let createIntervals = function (changes: SyncableArrayData, localIDs: IDMap) {
+                    let localValue: AnyValue, remoteValue: AnyValue;
                     // remote values in between objects that exist on both sides
-                    let intervals: Array<TODO> = [];
-                    let interval: Array<TODO> = [];
+                    let intervals: Array<ValueInterval> = [];
+                    let interval: Array<AnyValue> = [];
                     let lastID: string = null;
-                    let v: TODO = changes.v || [];
+                    let v: any[] = changes.v || [];
                     // synchronize the objects that exist on both sides
                     for (let i = 0; i < v.length; i++) {
                         remoteValue = v[i];
@@ -527,7 +530,7 @@ export class SyncableArray extends Syncable {
                     });
                     return intervals;
                 };
-                let intervals: TODO = createIntervals.call(this, changes, localIDs);
+                let intervals: Array<ValueInterval> = createIntervals.call(this, changes, localIDs);
 
                 // synchronize the intervals between the objects that exist on both sides
                 if (otherIsNewer) {
@@ -545,20 +548,20 @@ export class SyncableArray extends Syncable {
      * @param remote Array of remote data
      * @return Array The sorted data
      */
-    public sortByRemote(remote: Array<TODO>): Array<TODO> {
+    public sortByRemote(remote: Array<AnyValue>): Array<AnyValue> {
         let data = this.data;
         if (!isArray(remote)) return data;
         let localIDs = this.getIdMap();
         // construct map of remote object ID's that also exist locally
         let sharedIDs: Array<string> = [];
-        remote.forEach(function(remoteValue: TODO): void {
+        remote.forEach(function(remoteValue: AnyValue): void {
             if (!remoteValue || !remoteValue._s) return;
             if (!localIDs[remoteValue._s.id]) return;
             sharedIDs.push(remoteValue._s.id);
         }, this);
         // split local array into chunks
-        let chunks: Array<TODO> = [], chunk: Array<TODO> = [];
-        data.forEach(function(localValue: TODO): void {
+        let chunks: Array<Array<AnyValue>> = [], chunk: Array<AnyValue> = [];
+        data.forEach(function(localValue: AnyValue): void {
             // if the current value is a shared value, start a new chunk
             if (localValue && localValue._s &&
                 (sharedIDs.indexOf(localValue._s.id) >= 0)) {
@@ -570,7 +573,7 @@ export class SyncableArray extends Syncable {
         }, this);
         if (chunk.length) chunks.push(chunk);
         // sort chunks by remote order
-        chunks.sort(function(a: TODO, b: TODO): number {
+        chunks.sort(function(a: Array<AnyValue>, b: Array<AnyValue>): number {
             // only the first chunk can be empty, so it always sorts first
             if (!a.length) return -1;
             if (!b.length) return 1;
@@ -589,12 +592,12 @@ export class SyncableArray extends Syncable {
      * A range between two syncable objects, null as id to specify array start/end
      * { after: string = id, before: string = id, data: array }
      */
-    public mergeInterval(interval: TODO): void {
+    public mergeInterval(interval: ValueInterval): void {
         let start: number = interval.after ? (this.indexOf(interval.after, 0, true) + 1) : 0;
         let end: number = interval.before ? this.indexOf(interval.before, 0, true) : this.length();
-        let local: Array<TODO> = this.slice(start, end);
-        let values: Array<TODO> = [].concat(interval.values);
-        local.forEach(function(value: TODO): void {
+        let local: Array<AnyValue> = this.slice(start, end);
+        let values: Array<AnyValue> = [].concat(interval.values);
+        local.forEach(function(value: AnyValue): void {
             if (value && value._s) values.push(value);
         });
         Array.prototype.splice.apply(this.data, [start, end - start].concat(values));
@@ -604,10 +607,10 @@ export class SyncableArray extends Syncable {
      * Returns object mapping value object id to index in array where it is found
      * @return object
      */
-    public getIdMap(): TODO {
-        let localValue: TODO;
+    public getIdMap(): IDMap {
+        let localValue: Syncable;
         // build index mapping local object id's to positions
-        let localIDs: TODO = {};
+        let localIDs: IDMap = {};
         for (let i = 0; i < this.length(); i++) {
             localValue = this.get(String(i));
             if (localValue instanceof Syncable) {
@@ -622,10 +625,10 @@ export class SyncableArray extends Syncable {
      * @param index
      * @result {*} The removed value
      */
-    public removeAt(index: number): TODO {
-        let item: TODO = makeSyncable(this.document, this.data.splice(index, 1).pop());
-        let result: TODO = makeRaw(item);
-        let state: TODO = this.updateState();
+    public removeAt(index: number): any {
+        let item: AnyValue = makeSyncable(this.document, this.data.splice(index, 1).pop());
+        let result: any = makeRaw(item);
+        let state: State = this.updateState();
         if (item instanceof Syncable) {
             item.remove();
             if (!isArray(state.ri)) state.ri = [];
@@ -820,9 +823,19 @@ export class SyncableArray extends Syncable {
     // TODO: implement support for sort() in some way
 }
 
-interface SyncableArrayData {
+interface SyncableArrayData extends AnyWithState {
     _s: State;
     v: Array<any>;
+}
+
+interface IDMap {
+    [index: string]: number;
+}
+
+interface ValueInterval {
+    after: ObjectID;
+    before: ObjectID;
+    values: Array<AnyValue>;
 }
 
 /**

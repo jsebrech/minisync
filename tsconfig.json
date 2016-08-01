@@ -4,7 +4,8 @@
         "noImplicitAny": true,
         "preserveConstEnums": true,
         "outDir": "bin/",
-        "sourceMap": true
+        "sourceMap": true,
+        "newLine": "LF"
     },
     "files": [
         "src/base64.ts",

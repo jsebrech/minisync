@@ -1,7 +1,6 @@
-export type TODO = any;
-
 export type Version = string;
 export type ClientID = string;
+export type ObjectID = string;
 
 /**
  * Returns true if the given parameter is an Array
@@ -54,7 +53,7 @@ export interface ClientState {
 /** State of a Syncable object, array or Document */
 export interface State {
     /** Unique id of this object as known to all peers */
-    id: string;
+    id: ObjectID;
     /** version of last update */
     u: Version;
     /** timestamp of last change (iso string) */
@@ -66,9 +65,9 @@ export interface State {
     /** for arrays, list of removed objects */
     ri?: Array<ArrayRemovedObject>;
     /** only for Document, the document-level version */
-    v?: string;
+    v?: Version;
     /** only for Document, the client id for the local client managing the document */
-    clientID?: string;
+    clientID?: ClientID;
     /** only for Document, version-tracking for the versions known by remote clients */
     remote?: Array<ClientState>;
 }
@@ -86,3 +85,5 @@ export interface AnyWithState {
 export interface ArrayWithState extends Array<any> {
     _s: State;
 }
+
+export type AnyValue = AnyWithState | ArrayWithState | any;
