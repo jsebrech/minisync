@@ -336,6 +336,24 @@ describe('minisync', function() {
             expect(a.join(',')).toEqual('1,2');
         });
 
+        it('should implement sort', function() {
+            var a = minisync.from({v: [1, {v:2}, -1]}).get('v');
+            var sorted = a.sort();
+            expect(sorted[0]).toEqual(-1);
+            expect(sorted[1]).toEqual(1);
+            expect(typeof sorted[2]).toEqual('object');
+            sorted = a.sort(function(a, b) {
+                a = a.v || a;
+                b = b.v || b;
+                if (String(a) < String(b)) return 1;
+                if (String(a) > String(b)) return -1;
+                return 0;
+            });
+            expect(typeof sorted[0]).toEqual('object');
+            expect(sorted[1]).toEqual(1);
+            expect(sorted[2]).toEqual(-1);
+        });
+
     });
 
     var compareObjects = function(obj1, obj2, include_s, path) {

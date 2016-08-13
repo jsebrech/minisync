@@ -595,11 +595,15 @@ export class SyncableArray extends Syncable {
     public mergeInterval(interval: ValueInterval): void {
         let start: number = interval.after ? (this.indexOf(interval.after, 0, true) + 1) : 0;
         let end: number = interval.before ? this.indexOf(interval.before, 0, true) : this.length();
+        // take the local range of values corresponding to the interval
         let local: Array<AnyValue> = this.slice(start, end);
+        // take the entire remote range of values
         let values: Array<AnyValue> = [].concat(interval.values);
+        // add all local value objecs and arrays, but not primitives
         local.forEach(function(value: AnyValue): void {
             if (value && value._s) values.push(value);
         });
+        // replace the local value range by the augmented remote range
         Array.prototype.splice.apply(this.data, [start, end - start].concat(values));
     }
 
@@ -820,7 +824,19 @@ export class SyncableArray extends Syncable {
         return Array.prototype.concat.apply(data, arguments);
     }
 
-    // TODO: implement support for sort() in some way
+    public sort(comparefn?: any): Array<any> {
+        comparefn = comparefn || function(a: any, b: any) {
+            if (String(a) < String(b)) return -1;
+            if (String(a) > String(b)) return 1;
+            return 0;
+        };
+        let wrapperFn = function(a: AnyValue, b: AnyValue) {
+            return comparefn(makeRaw(a), makeRaw(b));
+        };
+        this.data.sort(wrapperFn);
+        this.getState().u = this.document.nextDocVersion();
+        return this.getData();
+    }
 }
 
 interface SyncableArrayData extends AnyWithState {

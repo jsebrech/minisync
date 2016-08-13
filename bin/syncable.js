@@ -586,12 +586,16 @@ var __extends = (this && this.__extends) || function (d, b) {
         SyncableArray.prototype.mergeInterval = function (interval) {
             var start = interval.after ? (this.indexOf(interval.after, 0, true) + 1) : 0;
             var end = interval.before ? this.indexOf(interval.before, 0, true) : this.length();
+            // take the local range of values corresponding to the interval
             var local = this.slice(start, end);
+            // take the entire remote range of values
             var values = [].concat(interval.values);
+            // add all local value objecs and arrays, but not primitives
             local.forEach(function (value) {
                 if (value && value._s)
                     values.push(value);
             });
+            // replace the local value range by the augmented remote range
             Array.prototype.splice.apply(this.data, [start, end - start].concat(values));
         };
         /**
@@ -802,6 +806,21 @@ var __extends = (this && this.__extends) || function (d, b) {
             }
             var data = this.getData();
             return Array.prototype.concat.apply(data, arguments);
+        };
+        SyncableArray.prototype.sort = function (comparefn) {
+            comparefn = comparefn || function (a, b) {
+                if (String(a) < String(b))
+                    return -1;
+                if (String(a) > String(b))
+                    return 1;
+                return 0;
+            };
+            var wrapperFn = function (a, b) {
+                return comparefn(makeRaw(a), makeRaw(b));
+            };
+            this.data.sort(wrapperFn);
+            this.getState().u = this.document.nextDocVersion();
+            return this.getData();
         };
         return SyncableArray;
     }(Syncable));
