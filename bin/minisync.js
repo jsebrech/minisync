@@ -13,6 +13,8 @@
     var uid = require("./uid");
     var base64 = require("./base64");
     // TODO: P2P communication mechanism (default implementation)
+    // TODO: Proxy object
+    // TODO: events for remote changes
     // Public API
     function from(data, restore) {
         return new document_1["default"](data || {}, restore);

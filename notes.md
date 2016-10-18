@@ -271,3 +271,86 @@ Array (nested):
        }
     ]
 
+Storage and P2P
+===============
+
+Storage Scenario
+----------------
+
+Peers:
+- Alice / device A
+- Alice / device B
+- Bob / device A
+- Bob / device C
+
+Documents:
+- Alice document 1 stored on dropbox account Alice1, locally on device A and B
+- Alice document 2 stored locally on device A
+- Bob document 1 stored on dropbox account Bob1, locally on device A and C
+- Bob document 3 stored on dropbox account Bob2, locally on device C
+
+Localstorage device A:
+- document1/alice
+- document2/alice
+- document1/bob
+
+Localstorage device B:
+- document1/alice
+
+Localstorage device C:
+- document1/bob
+- document3/bob
+
+Dropbox Alice1:
+- document1/deviceA
+- document1/deviceB
+
+Dropbox Bob1:
+- document1/deviceA
+- document1/deviceC
+
+Dropbox Bob2:
+- document3/deviceC
+
+Ideas:
+- When downloading document to device for the first time, generate client id and associate with local copy.
+- When storing document (local or cloud), store as documentid/clientid
+- When downloading updates, fetch updates from documentid/* in cloud storage account (= all my copies), 
+  and from ClientState.url for every known client (= all known copies)
+- There is no identity associated with a document, only a client id per device, and a set of storage locations.
+
+Cloud storage P2P backend
+-------------------------
+
+ClientState.url = URL(s) to download updates from
+- If string, single url containing all changes
+- If object, keys are: version, changes.base, changes.latest (see below)
+
+To download remote changes, for every remote client:
+1. Check [url]/version.json and compare with local ClientState.lastReceived
+2. If newer, download [url]/changes.latest.json
+3. If oldest version from latest is older than ClientState.lastReceived, merge it and done
+4. Otherwise, download [url]/changes.base.json, merge it, then merge changes.latest.json 
+
+Note: do this also for all documentid/clientid folders in the linked cloud storage account(s).
+
+Files:
+- version.json = used to track whether changes occurred
+- changes.base.json = all changes from oldest to some version (written when latest.json is > 30% of base.json)
+- changes.latest.json = all changes from base version to latest version (written every time)
+
+To upload changes, for every linked cloud storage account:
+1. If base needs updating, write changes.base.json (= everything up to latest version)
+2. Write changes.latest.json (= from base version to latest version, if base was written this is only the latest version)
+3. Write version.json
+4. Optionally: share url(s) with user
+
+Note: for initial write, changes.latest.json will only have the latest version
+Note: use dropbox http api: https://www.dropbox.com/developers/documentation/http/documentation
+
+Storing locally (localstorage):
+- Keep entire document (all changes)
+- Store as minisync-[document id]-[client id]
+
+Plugin API:
+minisync.addStorage(instance)

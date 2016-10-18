@@ -57,6 +57,10 @@ export class Syncable {
         }
     }
 
+    public getRawData(): AnyWithState {
+        return this.data;
+    }
+
     /**
      * Return the raw data object inside this Syncable
      * Is recursive, so the data object returned contains only the raw data
@@ -692,7 +696,7 @@ export class SyncableArray extends Syncable {
 
     public lastIndexOf(searchElement: any, fromIndex?: number): number {
         if (searchElement instanceof Syncable) {
-            searchElement = searchElement.data;
+            searchElement = searchElement.getRawData();
         }
         return this.data.lastIndexOf(searchElement, fromIndex);
     }
@@ -824,6 +828,10 @@ export class SyncableArray extends Syncable {
         return Array.prototype.concat.apply(data, arguments);
     }
 
+    /**
+     * Sorts the elements of an array in place and returns the array
+     * @param comparefn Optional compare function
+     */
     public sort(comparefn?: any): Array<any> {
         comparefn = comparefn || function(a: any, b: any) {
             if (String(a) < String(b)) return -1;
@@ -854,13 +862,17 @@ interface ValueInterval {
     values: Array<AnyValue>;
 }
 
+interface SyncableData {
+    data: AnyWithState;
+}
+
 /**
  * Returns whether two values are the same type or not
  * @param one
  * @param two
  */
 let sameType = function(one: any, two: any): boolean {
-    if (one instanceof Syncable) one = one.data;
-    if (two instanceof Syncable) two = two.data;
+    if (one instanceof Syncable) one = one.getRawData();
+    if (two instanceof Syncable) two = two.getRawData();
     return typeof one === typeof two;
 };

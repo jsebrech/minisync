@@ -7,6 +7,10 @@ import * as base64 from "./base64";
 
 // TODO: P2P communication mechanism (default implementation)
 
+// TODO: Proxy object
+
+// TODO: events for remote changes
+
 // Public API
 
 export function from (data: ChangesObject | any, restore?: boolean): Document {

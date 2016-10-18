@@ -59,6 +59,9 @@ var __extends = (this && this.__extends) || function (d, b) {
                 }
             }
         };
+        Syncable.prototype.getRawData = function () {
+            return this.data;
+        };
         /**
          * Return the raw data object inside this Syncable
          * Is recursive, so the data object returned contains only the raw data
@@ -680,7 +683,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         SyncableArray.prototype.lastIndexOf = function (searchElement, fromIndex) {
             if (searchElement instanceof Syncable) {
-                searchElement = searchElement.data;
+                searchElement = searchElement.getRawData();
             }
             return this.data.lastIndexOf(searchElement, fromIndex);
         };
@@ -807,6 +810,10 @@ var __extends = (this && this.__extends) || function (d, b) {
             var data = this.getData();
             return Array.prototype.concat.apply(data, arguments);
         };
+        /**
+         * Sorts the elements of an array in place and returns the array
+         * @param comparefn Optional compare function
+         */
         SyncableArray.prototype.sort = function (comparefn) {
             comparefn = comparefn || function (a, b) {
                 if (String(a) < String(b))
@@ -832,9 +839,9 @@ var __extends = (this && this.__extends) || function (d, b) {
      */
     var sameType = function (one, two) {
         if (one instanceof Syncable)
-            one = one.data;
+            one = one.getRawData();
         if (two instanceof Syncable)
-            two = two.data;
+            two = two.getRawData();
         return typeof one === typeof two;
     };
 });
