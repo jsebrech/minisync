@@ -1,9 +1,9 @@
+import {Document} from "./document";
 import {
-    isArray, dateToString, ObjectID, State, ClientState, Version,
-    AnyWithState, ArrayWithState, AnyValue, ArrayRemovedObject
+    AnyValue, AnyWithState, ArrayRemovedObject, ArrayWithState,
+    ClientState, dateToString, isArray, ObjectID, State, Version
 } from "./types";
 import * as uid from "./uid";
-import Document from "./document";
 
 /**
  * JSON object wrapper which tracks changes inside the JSON object
@@ -14,6 +14,8 @@ export class Syncable {
     protected document: Document;
     // the data this Syncable wraps
     protected data: AnyWithState;
+    // the proxy object created for this Syncable
+    protected proxy: any;
 
     /**
      * Syncable class constructor, wraps one synchronizing object in a document
@@ -21,44 +23,9 @@ export class Syncable {
      * @param data The data object it wraps
      * @param restore True if restoring from changes object
      */
-    constructor(document?: Document, data?: Object | Array<any>, restore?: boolean) {
+    constructor(document?: Document, data?: Object | any[], restore?: boolean) {
         if (document) this.setDocument(document);
         if (data) this.setData(data, restore);
-    }
-
-    /**
-     * Sets the Document instance inside which this object exists
-     * @param document
-     */
-    protected setDocument(document: Document): void {
-        this.document = document;
-    }
-
-    /**
-     * Sets a new value for this Syncable object
-     * @param data
-     * @param restore If true, we are restoring from a saved changes object
-     */
-    protected setData(data: Object | Array<any>, restore?: boolean): void {
-        this.data = <AnyWithState> data;
-        // make sure the state is initialized in the data object
-        if (this.data) {
-            this.getState();
-            if (restore) {
-                for (let key in this.data) {
-                    if (this.data.hasOwnProperty(key) && (key !== "_s")) {
-                        let value = makeSyncable(this.document, this.data[key], true);
-                        if (value instanceof Syncable) {
-                            this.data[key] = value.data;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public getRawData(): AnyWithState {
-        return this.data;
     }
 
     /**
@@ -69,7 +36,7 @@ export class Syncable {
     public getData(): any {
         if (this.isRemoved()) return null;
         let result: any = this.data;
-        if (typeof this.data == "object") {
+        if (typeof this.data === "object") {
             result = {};
             for (let i in this.data) {
                 if (this.data.hasOwnProperty(i) && (i !== "_s")) {
@@ -83,7 +50,7 @@ export class Syncable {
                 }
             }
         }
-        if (result && result["_s"]) delete result["_s"];
+        if (result && result._s) delete result._s;
         return result;
     }
 
@@ -158,28 +125,67 @@ export class Syncable {
     }
 
     /**
+     * Return a proxy object for the wrapped object that keeps track of changes
+     * You still have to synchronize through the original Document object
+     * @returns {any}
+     */
+    public getProxy(): any {
+        let self = this;
+        return new Proxy(this.data, {
+            get: (target: any, property: string) => {
+                if (property === "_s") return undefined;
+                let prop = self.get(property);
+                if (prop instanceof Syncable) prop = prop.getProxy();
+                return prop;
+            },
+            set: (target: any, property: string, value: any) => {
+                return self.set(property, value);
+            },
+            ownKeys: (target: any) => {
+                let keys: string[] = target.getOwnPropertyNames();
+                return keys.filter((value: string) => { return value !== "_s"; });
+            },
+            has: (target: any, property: string) => {
+                if (property === "_s") return false;
+                return property in target;
+            },
+            setPrototypeOf: () => {
+                throw new Error("setPrototypeOf not supported on minisync objects");
+            },
+            defineProperty: () => {
+                throw new Error("defineProperty not supported on minisync objects");
+            },
+            deleteProperty: (target: any, property: string) => {
+                return this.remove(property);
+            }
+        });
+    }
+
+    /**
      * Set a property on the data object, incrementing the version marker
      * @param key dot-separated property path
      * @param value
      */
-    public set(key: string, value: any): void {
+    public set(key: string, value: any): boolean {
         // convert Syncable instances back into basic JSON
         value = makeRaw(value);
         let keyParts = String(key).split(".");
         key = keyParts.pop();
         // foo.bar
         if (keyParts.length) {
-            this.get(keyParts.join(".")).set(key, value);
-            // foo[2], foo[2][1]
-        } else if (key.substr(-1) == "]") {
+            return this.get(keyParts.join(".")).set(key, value);
+        // foo[2], foo[2][1]
+        } else if (key.substr(-1) === "]") {
             let index = key.substr(0, key.length - 1).split("[").pop();
             key = key.split("[").slice(0, -1).join("[");
-            this.get(key).set(index, value);
-            // bar, 2
+            return this.get(key).set(index, value);
+        // bar, 2
         } else if (!this.isRemoved()) {
             this.data[key] = value;
             this.updateState();
+            return true;
         }
+        return false;
     }
 
     /**
@@ -188,7 +194,7 @@ export class Syncable {
      * @param [ifRemoved] also return it if it was removed
      * @returns {Syncable|SyncableArray|any}
      */
-    public get(key: string, ifRemoved?: boolean): Syncable | SyncableArray | any {
+    public get(key: string|number, ifRemoved?: boolean): Syncable | SyncableArray | any {
         let keyParts = String(key).split(".");
         key = keyParts.shift();
         let value: Syncable = this;
@@ -211,7 +217,7 @@ export class Syncable {
         }
         value = (value ? value.getInternalData() : null || {})[key];
         value = makeSyncable(this.document, value);
-        if (keyParts.length) {
+        if (value && keyParts.length) {
             value = value.get(keyParts.join("."));
         }
         // don't return removed values
@@ -220,13 +226,26 @@ export class Syncable {
     }
 
     /**
-     * Mark this object as removed
+     * Remote this object or one of its child properties
+     * @return true if the remove was successful
      */
-    public remove(): void {
-        if (!this.isRemoved()) {
-            let state = this.getState();
-            state.r = this.document.nextDocVersion();
-            state.t = dateToString(new Date());
+    public remove(key?: string): boolean {
+        if (!key) {
+            if (!this.isRemoved()) {
+                let state = this.getState();
+                state.r = this.document.nextDocVersion();
+                state.t = dateToString(new Date());
+                return true;
+            }
+        } else {
+            let v: any = this.get(key);
+            if (v instanceof Syncable) {
+                return v.remove();
+            } else {
+                delete this.data[key];
+                this.updateState();
+                return true;
+            }
         }
     }
 
@@ -244,7 +263,10 @@ export class Syncable {
      * @param [resultSetter] (Function) Function that sets a value on a result object
      * @returns {*} this object and all its changed properties, or null if nothing changed
      */
-    public getChangesSince(version: Version, resultSetter?: (result: AnyWithState, key: string | number, value: any) => void): AnyWithState {
+    public getChangesSince(
+        version: Version,
+        resultSetter?: (result: AnyWithState, key: string | number, value: any) => void
+    ): AnyWithState {
         let result: AnyWithState = null;
         for (let key in this.data) {
             if (this.data.hasOwnProperty(key) && (key !== "_s")) {
@@ -313,7 +335,8 @@ export class Syncable {
                 )
             )
         );
-        Object.keys(changes).forEach(function(key: string) {
+        let remoteKeys: string[] = Object.keys(changes);
+        remoteKeys.forEach((key: string) => {
             if (key === "_s") return;
             let remoteValue: any = changes[key];
             // if primitive value
@@ -325,7 +348,7 @@ export class Syncable {
                     (this.get(key) !== remoteValue) ) {
                     this.set(key, remoteValue);
                 }
-                // synchronize child objects
+            // synchronize child objects
             } else {
                 let expectType: any = (remoteValue._s.a) ? [] : {};
                 if (!sameType(this.get(key), expectType)) {
@@ -335,24 +358,63 @@ export class Syncable {
                 this.get(key).mergeChanges(remoteValue, clientState);
             }
         }, this);
+        if (otherIsNewer) {
+            // remove local-only keys (they were removed locally)
+            Object.keys(this.getInternalData()).forEach((key: string) => {
+                if (remoteKeys.indexOf(key) < 0) {
+                    this.remove(key);
+                }
+            });
+        }
         // if the other was removed, remove it here also,
         // even if the local value is newer
         let otherIsRemoved: boolean = !!(changes._s && changes._s.r);
         if (otherIsRemoved) this.remove();
     }
 
+    /**
+     * Sets the Document instance inside which this object exists
+     * @param document
+     */
+    protected setDocument(document: Document): void {
+        this.document = document;
+    }
+
+    /**
+     * Sets a new value for this Syncable object
+     * @param data
+     * @param restore If true, we are restoring from a saved changes object
+     */
+    protected setData(data: Object | any[], restore?: boolean): void {
+        this.data = <AnyWithState> data;
+        // make sure the state is initialized in the data object
+        if (this.data) {
+            this.getState();
+            if (restore) {
+                for (let key in this.data) {
+                    if (this.data.hasOwnProperty(key) && (key !== "_s")) {
+                        let value = makeSyncable(this.document, this.data[key], true);
+                        if (value instanceof Syncable) {
+                            this.data[key] = value.data;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 function makeSyncable(document: Document, data: any, restore?: boolean): Syncable | any;
-function makeSyncable(document: Document, data: Array<any>, restore?: boolean): SyncableArray;
+function makeSyncable(document: Document, data: any[], restore?: boolean): SyncableArray;
 function makeSyncable(document: Document, data: Syncable, restore?: boolean): Syncable;
 function makeSyncable(document: Document, data: SyncableArray, restore ?: boolean): SyncableArray;
 function makeSyncable(document: Document, data: any, restore?: boolean): Syncable | SyncableArray {
     let restoringArray = restore && data && data._s && data._s.a;
     if (isArray(data) || restoringArray) {
         return new SyncableArray(document, data, restore);
-    } else if ((typeof data == "object") && !(data instanceof Syncable)) {
-        return new Syncable(document, <Object>data, restore);
+    } else if ((typeof data === "object") && !(data instanceof Syncable)) {
+        return new Syncable(document, <Object> data, restore);
     } else return data;
 }
 
@@ -375,9 +437,9 @@ export class SyncableArray extends Syncable {
      * @param restore Whether we are restoring from a changes object
      * @constructor
      */
-    constructor(document: Document, data: SyncableArrayData | Array<any>, restore?: boolean) {
+    constructor(document: Document, data: SyncableArrayData | any[], restore?: boolean) {
         if (restore) {
-            let arrayObj = <SyncableArrayData>data;
+            let arrayObj = <SyncableArrayData> data;
             super(document, arrayObj.v, restore);
             this.data._s = arrayObj._s;
         } else {
@@ -391,8 +453,8 @@ export class SyncableArray extends Syncable {
      * Converts the object back into a simple array (no added properties)
      * @returns {Array}
      */
-    public getData(): Array<any> {
-        let result: Array<any> = null;
+    public getData(): any[] {
+        let result: any[] = null;
         if (isArray(this.data)) {
             // make a copy, and recurse
             result = this.data.slice();
@@ -416,7 +478,7 @@ export class SyncableArray extends Syncable {
      */
     public getChangesSince(version: Version): AnyWithState {
         return super.getChangesSince(version,
-            function(result: SyncableArrayData, key: number, value: any): void {
+            (result: SyncableArrayData, key: number, value: any): void => {
                 result.v[key] = value;
             }
         );
@@ -433,7 +495,7 @@ export class SyncableArray extends Syncable {
         if (this.getRemoved().length) {
             result._s.ri = this.getRemoved();
         }
-        return <SyncableArrayData>result;
+        return <SyncableArrayData> result;
     }
 
     /**
@@ -457,8 +519,8 @@ export class SyncableArray extends Syncable {
         if (changes && changes._s && isArray(changes.v)) {
             // remove items that were removed remotely
             if (isArray(changes._s.ri)) {
-                changes._s.ri.forEach(function(removed: ArrayRemovedObject) {
-                    this.forEach(function (value: Syncable|any, index: number): void {
+                changes._s.ri.forEach((removed: ArrayRemovedObject) => {
+                    this.forEach((value: Syncable|any, index: number): void => {
                         if (value && value.getID && (value.getID() === removed.id)) {
                             this.splice(index, 1);
                         }
@@ -471,7 +533,7 @@ export class SyncableArray extends Syncable {
             let remoteIDs: IDMap = {};
 
             // synchronize all value objects present in both local and remote
-            changes.v.forEach(function(remoteValue: AnyWithState, remoteIndex: number): void {
+            changes.v.forEach((remoteValue: AnyWithState, remoteIndex: number): void => {
                 if (remoteValue && remoteValue._s) {
                     remoteIDs[remoteValue._s.id] = remoteIndex;
                     let localIndex = localIDs[remoteValue._s.id];
@@ -489,26 +551,25 @@ export class SyncableArray extends Syncable {
                 this.data.splice.apply(this.data, [0, this.data.length].concat(sortedData));
 
                 let otherIsNewer: boolean =
-                    ( remoteChanged &&
+                    ( remoteChanged && (
                         // and the local data version is older the last local document version
                         // that was acknowledged by the remote (no conflict)
-                    ( (this.getVersion() <= clientState.lastAcknowledged) ||
+                        (this.getVersion() <= clientState.lastAcknowledged) ||
                         // or the remote timestamp is not older than the local timestamp
                         // (conflict solved in favor of remote value)
-                    (changes._s.t >= this.getTimeStamp())
-                    )
-                    );
+                        (changes._s.t >= this.getTimeStamp())
+                    ));
 
-                let createIntervals = function (changes: SyncableArrayData, localIDs: IDMap) {
-                    let localValue: AnyValue, remoteValue: AnyValue;
+                let intervals: ValueInterval[] = (() => {
+                    let localValue: AnyValue;
+                    let remoteValue: AnyValue;
                     // remote values in between objects that exist on both sides
-                    let intervals: Array<ValueInterval> = [];
-                    let interval: Array<AnyValue> = [];
+                    let intervals: ValueInterval[] = [];
+                    let interval: AnyValue[] = [];
                     let lastID: string = null;
                     let v: any[] = changes.v || [];
                     // synchronize the objects that exist on both sides
-                    for (let i = 0; i < v.length; i++) {
-                        remoteValue = v[i];
+                    for (let remoteValue of v) {
                         if (remoteValue && remoteValue._s) {
                             if (localIDs[remoteValue._s.id] !== undefined) {
                                 localValue = this.get(localIDs[remoteValue._s.id]);
@@ -533,8 +594,7 @@ export class SyncableArray extends Syncable {
                         values: interval
                     });
                     return intervals;
-                };
-                let intervals: Array<ValueInterval> = createIntervals.call(this, changes, localIDs);
+                })();
 
                 // synchronize the intervals between the objects that exist on both sides
                 if (otherIsNewer) {
@@ -552,20 +612,21 @@ export class SyncableArray extends Syncable {
      * @param remote Array of remote data
      * @return Array The sorted data
      */
-    public sortByRemote(remote: Array<AnyValue>): Array<AnyValue> {
+    public sortByRemote(remote: AnyValue[]): AnyValue[] {
         let data = this.data;
         if (!isArray(remote)) return data;
         let localIDs = this.getIdMap();
         // construct map of remote object ID's that also exist locally
-        let sharedIDs: Array<string> = [];
-        remote.forEach(function(remoteValue: AnyValue): void {
+        let sharedIDs: string[] = [];
+        remote.forEach((remoteValue: AnyValue): void => {
             if (!remoteValue || !remoteValue._s) return;
             if (!localIDs[remoteValue._s.id]) return;
             sharedIDs.push(remoteValue._s.id);
         }, this);
         // split local array into chunks
-        let chunks: Array<Array<AnyValue>> = [], chunk: Array<AnyValue> = [];
-        data.forEach(function(localValue: AnyValue): void {
+        let chunks: AnyValue[][] = [];
+        let chunk: AnyValue[] = [];
+        data.forEach((localValue: AnyValue): void => {
             // if the current value is a shared value, start a new chunk
             if (localValue && localValue._s &&
                 (sharedIDs.indexOf(localValue._s.id) >= 0)) {
@@ -577,7 +638,7 @@ export class SyncableArray extends Syncable {
         }, this);
         if (chunk.length) chunks.push(chunk);
         // sort chunks by remote order
-        chunks.sort(function(a: Array<AnyValue>, b: Array<AnyValue>): number {
+        chunks.sort((a: AnyValue[], b: AnyValue[]): number => {
             // only the first chunk can be empty, so it always sorts first
             if (!a.length) return -1;
             if (!b.length) return 1;
@@ -600,11 +661,11 @@ export class SyncableArray extends Syncable {
         let start: number = interval.after ? (this.indexOf(interval.after, 0, true) + 1) : 0;
         let end: number = interval.before ? this.indexOf(interval.before, 0, true) : this.length();
         // take the local range of values corresponding to the interval
-        let local: Array<AnyValue> = this.slice(start, end);
+        let local: AnyValue[] = this.slice(start, end);
         // take the entire remote range of values
-        let values: Array<AnyValue> = [].concat(interval.values);
+        let values: AnyValue[] = [].concat(interval.values);
         // add all local value objecs and arrays, but not primitives
-        local.forEach(function(value: AnyValue): void {
+        local.forEach((value: AnyValue): void => {
             if (value && value._s) values.push(value);
         });
         // replace the local value range by the augmented remote range
@@ -649,7 +710,7 @@ export class SyncableArray extends Syncable {
      * Returns the array of removed object id's
      * @returns {Array}
      */
-    public getRemoved(): Array<ArrayRemovedObject> {
+    public getRemoved(): ArrayRemovedObject[] {
         let state = this.getState();
         return state ? (state.ri || []) : [];
     }
@@ -663,7 +724,7 @@ export class SyncableArray extends Syncable {
     }
 
     public forEach(callback: any, thisArg: any): void {
-        this.data.forEach(function(value: any, index: number, arr: Array<any>): void {
+        this.data.forEach((value: any, index: number, arr: any[]): void => {
             value = makeSyncable(this.document, value);
             callback.call(thisArg, value, index, arr);
         }, this);
@@ -696,7 +757,7 @@ export class SyncableArray extends Syncable {
 
     public lastIndexOf(searchElement: any, fromIndex?: number): number {
         if (searchElement instanceof Syncable) {
-            searchElement = searchElement.getRawData();
+            searchElement = searchElement.getInternalData();
         }
         return this.data.lastIndexOf(searchElement, fromIndex);
     }
@@ -705,7 +766,7 @@ export class SyncableArray extends Syncable {
         let item: any = this.data.slice().pop();
         let index: number = this.lastIndexOf(item);
         this.removeAt(index);
-        if (item && item["_s"]) delete item["_s"];
+        if (item && item._s) delete item._s;
         return item;
     }
 
@@ -734,7 +795,7 @@ export class SyncableArray extends Syncable {
      * @param elements The elements to insert
      */
     public splice(index: number, howMany?: number, ...elements: any[]): any {
-        let removed: Array<any> = [];
+        let removed: any[] = [];
         while (howMany-- > 0) {
             removed.push(this.removeAt(index));
         }
@@ -751,7 +812,7 @@ export class SyncableArray extends Syncable {
      * @param [end]
      * @returns {Array}
      */
-    public slice(begin: number, end: number): Array<any> {
+    public slice(begin: number, end: number): any[] {
         return this.data.slice(begin, end);
     }
 
@@ -762,8 +823,11 @@ export class SyncableArray extends Syncable {
 
     /**
      * Determines whether the specified callback function returns true for any element of an array.
-     * @param callbackfn A function that accepts up to three arguments. The some method calls the callbackfn function for each element in array1 until the callbackfn returns true, or until the end of the array.
-     * @param thisArg An object to which the this keyword can refer in the callbackfn function. If thisArg is omitted, undefined is used as the this value.
+     * @param callbackfn A function that accepts up to three arguments. 
+     *        The some method calls the callbackfn function for each element in array1 
+     *        until the callbackfn returns true, or until the end of the array.
+     * @param thisArg An object to which the this keyword can refer in the callbackfn function. 
+     *        If thisArg is omitted, undefined is used as the this value.
      */
     public some(callbackfn: any, thisArg?: any): boolean {
         let data = this.getData();
@@ -771,9 +835,13 @@ export class SyncableArray extends Syncable {
     }
 
     /**
-     * Calls the specified callback function for all the elements in an array, in descending order. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
-     * @param callbackfn A function that accepts up to four arguments. The reduceRight method calls the callbackfn function one time for each element in the array.
-     * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
+     * Calls the specified callback function for all the elements in an array, in descending order. 
+     * The return value of the callback function is the accumulated result, 
+     * and is provided as an argument in the next call to the callback function.
+     * @param callbackfn A function that accepts up to four arguments. 
+     * The reduceRight method calls the callbackfn function one time for each element in the array.
+     * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. 
+     * The first call to the callbackfn function provides this value as an argument instead of an array value.
      */
     public reduceRight(callbackfn: any, initialValue?: any): any {
         let data = this.getData();
@@ -781,9 +849,13 @@ export class SyncableArray extends Syncable {
     }
 
     /**
-     * Calls the specified callback function for all the elements in an array. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
-     * @param callbackfn A function that accepts up to four arguments. The reduce method calls the callbackfn function one time for each element in the array.
-     * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
+     * Calls the specified callback function for all the elements in an array. 
+     * The return value of the callback function is the accumulated result, 
+     * and is provided as an argument in the next call to the callback function.
+     * @param callbackfn A function that accepts up to four arguments. 
+     * The reduce method calls the callbackfn function one time for each element in the array.
+     * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. 
+     * The first call to the callbackfn function provides this value as an argument instead of an array value.
      */
     public reduce(callbackfn: any, initialValue?: any): any {
         let data = this.getData();
@@ -791,9 +863,12 @@ export class SyncableArray extends Syncable {
     }
 
     /**
-     * Calls a defined callback function on each element of an array, and returns an array that contains the results.
-     * @param callbackfn A function that accepts up to three arguments. The map method calls the callbackfn function one time for each element in the array.
-     * @param thisArg An object to which the this keyword can refer in the callbackfn function. If thisArg is omitted, undefined is used as the this value.
+     * Calls a defined callback function on each element of an array, 
+     * and returns an array that contains the results.
+     * @param callbackfn A function that accepts up to three arguments. 
+     * The map method calls the callbackfn function one time for each element in the array.
+     * @param thisArg An object to which the this keyword can refer in the callbackfn function. 
+     * If thisArg is omitted, undefined is used as the this value.
      */
     public map<U>(callbackfn: (value: any, index: number, array: any[]) => U, thisArg?: any): U[] {
         let data = this.getData();
@@ -802,7 +877,8 @@ export class SyncableArray extends Syncable {
 
     /**
      * Adds all the elements of an array separated by the specified separator string.
-     * @param separator A string used to separate one element of an array from the next in the resulting String. If omitted, the array elements are separated with a comma.
+     * @param separator A string used to separate one element of an array from the next in the resulting String. 
+     * If omitted, the array elements are separated with a comma.
      */
     public join(separator?: string): string {
         let data = this.getData();
@@ -811,8 +887,11 @@ export class SyncableArray extends Syncable {
 
     /**
      * Determines whether all the members of an array satisfy the specified test.
-     * @param callbackfn A function that accepts up to three arguments. The every method calls the callbackfn function for each element in array1 until the callbackfn returns false, or until the end of the array.
-     * @param thisArg An object to which the this keyword can refer in the callbackfn function. If thisArg is omitted, undefined is used as the this value.
+     * @param callbackfn A function that accepts up to three arguments. 
+     * The every method calls the callbackfn function for each element in array1 until the callbackfn returns false, 
+     * or until the end of the array.
+     * @param thisArg An object to which the this keyword can refer in the callbackfn function. 
+     * If thisArg is omitted, undefined is used as the this value.
      */
     public every(callbackfn: any, thisArg?: any): boolean {
         let data = this.getData();
@@ -832,13 +911,13 @@ export class SyncableArray extends Syncable {
      * Sorts the elements of an array in place and returns the array
      * @param comparefn Optional compare function
      */
-    public sort(comparefn?: any): Array<any> {
-        comparefn = comparefn || function(a: any, b: any) {
+    public sort(comparefn?: any): any[] {
+        comparefn = comparefn || ((a: any, b: any) => {
             if (String(a) < String(b)) return -1;
             if (String(a) > String(b)) return 1;
             return 0;
-        };
-        let wrapperFn = function(a: AnyValue, b: AnyValue) {
+        });
+        let wrapperFn = (a: AnyValue, b: AnyValue) => {
             return comparefn(makeRaw(a), makeRaw(b));
         };
         this.data.sort(wrapperFn);
@@ -849,7 +928,7 @@ export class SyncableArray extends Syncable {
 
 interface SyncableArrayData extends AnyWithState {
     _s: State;
-    v: Array<any>;
+    v: any[];
 }
 
 interface IDMap {
@@ -859,7 +938,7 @@ interface IDMap {
 interface ValueInterval {
     after: ObjectID;
     before: ObjectID;
-    values: Array<AnyValue>;
+    values: AnyValue[];
 }
 
 interface SyncableData {
@@ -871,8 +950,8 @@ interface SyncableData {
  * @param one
  * @param two
  */
-let sameType = function(one: any, two: any): boolean {
-    if (one instanceof Syncable) one = one.getRawData();
-    if (two instanceof Syncable) two = two.getRawData();
+let sameType = (one: any, two: any): boolean => {
+    if (one instanceof Syncable) one = one.getInternalData();
+    if (two instanceof Syncable) two = two.getInternalData();
     return typeof one === typeof two;
 };

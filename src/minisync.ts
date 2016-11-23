@@ -1,13 +1,10 @@
-import {Syncable, SyncableArray} from "./syncable";
-import Document from "./document";
-import ChangesObject from "./document";
-import {dateToString, ClientID} from "./types";
-import * as uid from "./uid";
 import * as base64 from "./base64";
+import {ChangesObject, Document} from "./document";
+import {Syncable, SyncableArray} from "./syncable";
+import {ClientID, dateToString} from "./types";
+import * as uid from "./uid";
 
 // TODO: P2P communication mechanism (default implementation)
-
-// TODO: Proxy object
 
 // TODO: events for remote changes
 
@@ -27,10 +24,10 @@ export function restore(data: ChangesObject | any): Document {
 
 // Private API exposed for unit tests only
 
-export var _private = {
+export let _private = {
     nextVersion: base64.nextVersion,
-    dateToString: dateToString,
+    dateToString,
     createLongID: uid.nextLong,
-    Syncable: Syncable,
-    SyncableArray: SyncableArray
+    Syncable,
+    SyncableArray
 };

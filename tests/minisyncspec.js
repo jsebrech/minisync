@@ -7,7 +7,8 @@ describe('minisync', function() {
     describe('uid', function() {
 
         it('should be unique a thousand times', function() {
-            var uids = [], uid = null;
+            var uids = [];
+            var uid = null;
             for (var i = 0; i < 1000; i++) {
                 uid = minisync.createID();
                 expect(uids.indexOf(uid)).toEqual(-1);
@@ -105,7 +106,7 @@ describe('minisync', function() {
             expect(o.getDocVersion()).not.toEqual(oldVersion);
             oldVersion = o.getDocVersion();
             o.set('quu', 'qux');
-            expect(data['quu']).toEqual('qux');
+            expect(data.quu).toEqual('qux');
             expect(o.getDocVersion()).not.toEqual(oldVersion);
         });
 
@@ -115,11 +116,11 @@ describe('minisync', function() {
             o.set('baz', { foo: 'bar' });
             var data = o.getData();
             expect(typeof data).toEqual('object');
-            expect(data['_s']).toBeUndefined();
+            expect(data._s).toBeUndefined();
             expect(data.foo).toEqual('bar');
             expect(data.bar).toEqual('baz');
             expect(typeof data.baz).toEqual('object');
-            expect(data.baz['_s']).toBeUndefined();
+            expect(data.baz._s).toBeUndefined();
             expect(data.baz.foo).toEqual('bar');
         });
 
@@ -151,7 +152,7 @@ describe('minisync', function() {
             var d = o.getData();
             expect(typeof d).toEqual('object');
             expect(typeof d.foo).toEqual('object');
-            expect(d.foo['bar']).toBeUndefined();
+            expect(d.foo.bar).toBeUndefined();
         });
 
         it('should know what changed', function() {
@@ -225,15 +226,15 @@ describe('minisync', function() {
             var data = o.getData().test;
             expect(isArray(data)).toBeTruthy();
             expect(data.length).toEqual(2);
-            expect(data['_s']).toBeUndefined();
+            expect(data._s).toBeUndefined();
             expect(data[0]).toEqual('bar');
             expect(typeof data[1]).toEqual('object');
             expect(data[1].foo).toEqual('bar');
-            expect(data[1]['_s']).toBeUndefined();
+            expect(data[1]._s).toBeUndefined();
         });
 
         it('should keep track of removed items', function() {
-            var data = minisync.from({ v: [{foo: 'bar'},{bar:'baz'}]}).get('v');
+            var data = minisync.from({ v: [{foo: 'bar'}, {bar: 'baz'}]}).get('v');
             expect(data.getData().length).toEqual(2);
             var itemID = data.get(0).getID();
             var updatedAt = data.getState().u;
@@ -266,6 +267,8 @@ describe('minisync', function() {
                         case 2:
                             expect(typeof value).toEqual('object');
                             expect(value.get('foo')).toEqual('bar');
+                            break;
+                        default:
                             break;
                     }
                     expect(arr).not.toBeNull();
@@ -337,16 +340,16 @@ describe('minisync', function() {
         });
 
         it('should implement sort', function() {
-            var a = minisync.from({v: [1, {v:2}, -1]}).get('v');
+            var a = minisync.from({v: [1, {v: 2}, -1]}).get('v');
             var sorted = a.sort();
             expect(sorted[0]).toEqual(-1);
             expect(sorted[1]).toEqual(1);
             expect(typeof sorted[2]).toEqual('object');
-            sorted = a.sort(function(a, b) {
-                a = a.v || a;
-                b = b.v || b;
-                if (String(a) < String(b)) return 1;
-                if (String(a) > String(b)) return -1;
+            sorted = a.sort(function(first, second) {
+                first = first.v || first;
+                second = second.v || second;
+                if (String(first) < String(second)) return 1;
+                if (String(first) > String(second)) return -1;
                 return 0;
             });
             expect(typeof sorted[0]).toEqual('object');
@@ -356,15 +359,15 @@ describe('minisync', function() {
 
     });
 
-    var compareObjects = function(obj1, obj2, include_s, path) {
+    var compareObjects = function(obj1, obj2, includeS, path) {
         for (var key in obj1) {
-            if (!include_s && (key === '_s')) continue;
+            if (!includeS && (key === '_s')) continue;
             if (obj1.hasOwnProperty(key)) {
                 var testing = (path || '') + '[' + key + ']';
                 expect(typeof obj1[key]).toEqual(typeof obj2[key]);
                 if (typeof obj1[key] === 'object') {
                     expect(isArray(obj1[key])).toEqual(isArray(obj2[key]));
-                    compareObjects(obj1[key], obj2[key], include_s, testing);
+                    compareObjects(obj1[key], obj2[key], includeS, testing);
                 } else {
                     expect(obj1[key]).toEqual(obj2[key]);
                 }
@@ -464,14 +467,13 @@ describe('minisync', function() {
         });
 
         it('should merge removed objects', function() {
-            var client1 = minisync.from({foo: {o:1}, bar: {o:2}});
+            var client1 = minisync.from({foo: {o: 1}, bar: {o: 2}});
             var client2 = minisync.from(client1.getChanges());
             compareObjects(client1.data, client2.data);
             client1.get('bar').remove();
             client2.mergeChanges(client1.getChanges());
             expect(client2.get('bar')).toBeNull();
         });
-
 
         it('should implement the example from the readme', function() {
             var alice = minisync.from({ foo: 'initial state goes here' });
@@ -513,7 +515,7 @@ describe('minisync', function() {
 
         describe('array synchronization', function() {
             it('should initialize from a changes object', function() {
-                var c1 = minisync.from({a: [{o:1},{o:2},{o:3}]});
+                var c1 = minisync.from({a: [{o: 1}, {o: 2}, {o: 3}]});
                 var c2 = minisync.from(c1.getChanges());
                 compareObjects(c1.data, c2.data);
             });
@@ -529,7 +531,7 @@ describe('minisync', function() {
             });
 
             it('should extract intervals', function() {
-                var c1 = minisync.from({a: [{o:1},{o:2},{o:3}]});
+                var c1 = minisync.from({a: [{o: 1}, {o: 2}, {o: 3}]});
                 var c2 = minisync.from(c1.getChanges());
                 c1.get('a').splice(2, 0, 3, 4);
                 c1.get('a').splice(1, 0, 1, 2);
@@ -538,8 +540,8 @@ describe('minisync', function() {
                 // note that empty intervals are not merged,
                 // so there is no interval before the first object
                 var expectedIntervals = [
-                    {after: c2.get('a[0]').getID(), before: c2.get('a[1]').getID(), values: [1,2]},
-                    {after: c2.get('a[1]').getID(), before: c2.get('a[2]').getID(), values: [3,4]},
+                    {after: c2.get('a[0]').getID(), before: c2.get('a[1]').getID(), values: [1, 2]},
+                    {after: c2.get('a[1]').getID(), before: c2.get('a[2]').getID(), values: [3, 4]},
                     {after: c2.get('a[2]').getID(), before: null, values: [5]}
                 ];
                 var expectedIntervalIndex = 0;
@@ -658,6 +660,41 @@ describe('minisync', function() {
             expect(o2.getClientID()).toEqual(o1.getClientID());
             expect(o2.getDocVersion()).toEqual(o1.getDocVersion());
             compareObjects(o1.data, o2.data, true);
+        });
+    });
+
+    describe('proxy', function() {
+        it('should synchronize after nested changes', function() {
+            var o1 = minisync.from({
+                foo: 'bar',
+                bar: [ 'quu', {
+                    'baz': 'qux'
+                }]
+            });
+            // does it look right?
+            var p = o1.getProxy();
+            expect(p.foo).toEqual('bar');
+            expect(isArray(p.bar)).toBeTruthy();
+            expect(p.bar.length).toEqual(2);
+            expect(p.bar[0]).toEqual('quu');
+            expect(typeof p.bar[1]).toEqual('object');
+            expect(p.bar[1].baz).toEqual('qux');
+            // change it, sync it, and check it looks fine
+            p.foo = 'a';
+            p.bar[0] = 'b';
+            p.bar[1].baz = 'c';
+            p.quu = 'd';
+            var c2 = minisync.from(o1.getChanges());
+            compareObjects(c2.getData(), {
+                'foo': 'a',
+                'bar': ['b', {
+                    baz: 'c'
+                }],
+                'quu': 'd'
+            });
+            delete p.quu;
+            c2.mergeChanges(o1.getChanges());
+            expect(c2.getData().quu).toBeUndefined();
         });
     });
 });

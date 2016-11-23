@@ -5,7 +5,9 @@
         "preserveConstEnums": true,
         "outDir": "bin/",
         "sourceMap": true,
-        "newLine": "LF"
+        "newLine": "LF",
+        "target": "es5",
+        "lib": ["dom", "es5", "scripthost", "es2015.core", "es2015.proxy"]
     },
     "files": [
         "src/base64.ts",

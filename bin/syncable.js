@@ -31,38 +31,6 @@ var __extends = (this && this.__extends) || function (d, b) {
                 this.setData(data, restore);
         }
         /**
-         * Sets the Document instance inside which this object exists
-         * @param document
-         */
-        Syncable.prototype.setDocument = function (document) {
-            this.document = document;
-        };
-        /**
-         * Sets a new value for this Syncable object
-         * @param data
-         * @param restore If true, we are restoring from a saved changes object
-         */
-        Syncable.prototype.setData = function (data, restore) {
-            this.data = data;
-            // make sure the state is initialized in the data object
-            if (this.data) {
-                this.getState();
-                if (restore) {
-                    for (var key in this.data) {
-                        if (this.data.hasOwnProperty(key) && (key !== "_s")) {
-                            var value = makeSyncable(this.document, this.data[key], true);
-                            if (value instanceof Syncable) {
-                                this.data[key] = value.data;
-                            }
-                        }
-                    }
-                }
-            }
-        };
-        Syncable.prototype.getRawData = function () {
-            return this.data;
-        };
-        /**
          * Return the raw data object inside this Syncable
          * Is recursive, so the data object returned contains only the raw data
          * @returns {Object|Array|Number|String|Boolean}
@@ -71,7 +39,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             if (this.isRemoved())
                 return null;
             var result = this.data;
-            if (typeof this.data == "object") {
+            if (typeof this.data === "object") {
                 result = {};
                 for (var i in this.data) {
                     if (this.data.hasOwnProperty(i) && (i !== "_s")) {
@@ -87,8 +55,8 @@ var __extends = (this && this.__extends) || function (d, b) {
                     }
                 }
             }
-            if (result && result["_s"])
-                delete result["_s"];
+            if (result && result._s)
+                delete result._s;
             return result;
         };
         /**
@@ -158,6 +126,46 @@ var __extends = (this && this.__extends) || function (d, b) {
             return this.getState().t;
         };
         /**
+         * Return a proxy object for the wrapped object that keeps track of changes
+         * You still have to synchronize through the original Document object
+         * @returns {any}
+         */
+        Syncable.prototype.getProxy = function () {
+            var _this = this;
+            var self = this;
+            return new Proxy(this.data, {
+                get: function (target, property) {
+                    if (property === "_s")
+                        return undefined;
+                    var prop = self.get(property);
+                    if (prop instanceof Syncable)
+                        prop = prop.getProxy();
+                    return prop;
+                },
+                set: function (target, property, value) {
+                    return self.set(property, value);
+                },
+                ownKeys: function (target) {
+                    var keys = target.getOwnPropertyNames();
+                    return keys.filter(function (value) { return value !== "_s"; });
+                },
+                has: function (target, property) {
+                    if (property === "_s")
+                        return false;
+                    return property in target;
+                },
+                setPrototypeOf: function () {
+                    throw new Error("setPrototypeOf not supported on minisync objects");
+                },
+                defineProperty: function () {
+                    throw new Error("defineProperty not supported on minisync objects");
+                },
+                deleteProperty: function (target, property) {
+                    return _this.remove(property);
+                }
+            });
+        };
+        /**
          * Set a property on the data object, incrementing the version marker
          * @param key dot-separated property path
          * @param value
@@ -169,17 +177,19 @@ var __extends = (this && this.__extends) || function (d, b) {
             key = keyParts.pop();
             // foo.bar
             if (keyParts.length) {
-                this.get(keyParts.join(".")).set(key, value);
+                return this.get(keyParts.join(".")).set(key, value);
             }
-            else if (key.substr(-1) == "]") {
+            else if (key.substr(-1) === "]") {
                 var index = key.substr(0, key.length - 1).split("[").pop();
                 key = key.split("[").slice(0, -1).join("[");
-                this.get(key).set(index, value);
+                return this.get(key).set(index, value);
             }
             else if (!this.isRemoved()) {
                 this.data[key] = value;
                 this.updateState();
+                return true;
             }
+            return false;
         };
         /**
          * Get a property from the data object
@@ -210,7 +220,7 @@ var __extends = (this && this.__extends) || function (d, b) {
             }
             value = (value ? value.getInternalData() : null || {})[key];
             value = makeSyncable(this.document, value);
-            if (keyParts.length) {
+            if (value && keyParts.length) {
                 value = value.get(keyParts.join("."));
             }
             // don't return removed values
@@ -219,13 +229,28 @@ var __extends = (this && this.__extends) || function (d, b) {
             return value;
         };
         /**
-         * Mark this object as removed
+         * Remote this object or one of its child properties
+         * @return true if the remove was successful
          */
-        Syncable.prototype.remove = function () {
-            if (!this.isRemoved()) {
-                var state = this.getState();
-                state.r = this.document.nextDocVersion();
-                state.t = types_1.dateToString(new Date());
+        Syncable.prototype.remove = function (key) {
+            if (!key) {
+                if (!this.isRemoved()) {
+                    var state = this.getState();
+                    state.r = this.document.nextDocVersion();
+                    state.t = types_1.dateToString(new Date());
+                    return true;
+                }
+            }
+            else {
+                var v = this.get(key);
+                if (v instanceof Syncable) {
+                    return v.remove();
+                }
+                else {
+                    delete this.data[key];
+                    this.updateState();
+                    return true;
+                }
             }
         };
         /**
@@ -300,6 +325,7 @@ var __extends = (this && this.__extends) || function (d, b) {
          * @param clientState Client state for the client we're synchronizing from
          */
         Syncable.prototype.mergeChanges = function (changes, clientState) {
+            var _this = this;
             if (!changes)
                 return;
             // if the remote version of the object is newer than the last received
@@ -311,7 +337,8 @@ var __extends = (this && this.__extends) || function (d, b) {
                         // or the remote timestamp is not older than the local timestamp
                         // (conflict solved in favor of remote value)
                         (changes._s.t >= this.getTimeStamp()))));
-            Object.keys(changes).forEach(function (key) {
+            var remoteKeys = Object.keys(changes);
+            remoteKeys.forEach(function (key) {
                 if (key === "_s")
                     return;
                 var remoteValue = changes[key];
@@ -321,24 +348,61 @@ var __extends = (this && this.__extends) || function (d, b) {
                     // if the remote version of the object is newer than the last received
                     if (otherIsNewer &&
                         // and the property value is different from the local value
-                        (this.get(key) !== remoteValue)) {
-                        this.set(key, remoteValue);
+                        (_this.get(key) !== remoteValue)) {
+                        _this.set(key, remoteValue);
                     }
                 }
                 else {
                     var expectType = (remoteValue._s.a) ? [] : {};
-                    if (!sameType(this.get(key), expectType)) {
-                        this.set(key, expectType);
-                        this.get(key).getState().u = null;
+                    if (!sameType(_this.get(key), expectType)) {
+                        _this.set(key, expectType);
+                        _this.get(key).getState().u = null;
                     }
-                    this.get(key).mergeChanges(remoteValue, clientState);
+                    _this.get(key).mergeChanges(remoteValue, clientState);
                 }
             }, this);
+            if (otherIsNewer) {
+                // remove local-only keys (they were removed locally)
+                Object.keys(this.getInternalData()).forEach(function (key) {
+                    if (remoteKeys.indexOf(key) < 0) {
+                        _this.remove(key);
+                    }
+                });
+            }
             // if the other was removed, remove it here also,
             // even if the local value is newer
             var otherIsRemoved = !!(changes._s && changes._s.r);
             if (otherIsRemoved)
                 this.remove();
+        };
+        /**
+         * Sets the Document instance inside which this object exists
+         * @param document
+         */
+        Syncable.prototype.setDocument = function (document) {
+            this.document = document;
+        };
+        /**
+         * Sets a new value for this Syncable object
+         * @param data
+         * @param restore If true, we are restoring from a saved changes object
+         */
+        Syncable.prototype.setData = function (data, restore) {
+            this.data = data;
+            // make sure the state is initialized in the data object
+            if (this.data) {
+                this.getState();
+                if (restore) {
+                    for (var key in this.data) {
+                        if (this.data.hasOwnProperty(key) && (key !== "_s")) {
+                            var value = makeSyncable(this.document, this.data[key], true);
+                            if (value instanceof Syncable) {
+                                this.data[key] = value.data;
+                            }
+                        }
+                    }
+                }
+            }
         };
         return Syncable;
     }());
@@ -348,7 +412,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         if (types_1.isArray(data) || restoringArray) {
             return new SyncableArray(document, data, restore);
         }
-        else if ((typeof data == "object") && !(data instanceof Syncable)) {
+        else if ((typeof data === "object") && !(data instanceof Syncable)) {
             return new Syncable(document, data, restore);
         }
         else
@@ -446,15 +510,16 @@ var __extends = (this && this.__extends) || function (d, b) {
              - v[i] can be primitive or object/array
              - object values may be sparse (don't contain child values)
              */
+            var _this = this;
             if (changes && changes._s && types_1.isArray(changes.v)) {
                 // remove items that were removed remotely
                 if (types_1.isArray(changes._s.ri)) {
                     changes._s.ri.forEach(function (removed) {
-                        this.forEach(function (value, index) {
+                        _this.forEach(function (value, index) {
                             if (value && value.getID && (value.getID() === removed.id)) {
-                                this.splice(index, 1);
+                                _this.splice(index, 1);
                             }
-                        }, this);
+                        }, _this);
                     }, this);
                 }
                 // maps value id to index
@@ -466,7 +531,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                         remoteIDs_1[remoteValue._s.id] = remoteIndex;
                         var localIndex = localIDs_1[remoteValue._s.id];
                         if (localIndex !== undefined) {
-                            var localValue = this.get(localIDs_1[remoteValue._s.id]);
+                            var localValue = _this.get(localIDs_1[remoteValue._s.id]);
                             localValue.mergeChanges(remoteValue, clientState);
                         }
                     }
@@ -476,26 +541,27 @@ var __extends = (this && this.__extends) || function (d, b) {
                 if (remoteChanged) {
                     var sortedData = this.sortByRemote(changes.v);
                     this.data.splice.apply(this.data, [0, this.data.length].concat(sortedData));
-                    var otherIsNewer = (remoteChanged &&
-                        // and the local data version is older the last local document version
-                        // that was acknowledged by the remote (no conflict)
-                        ((this.getVersion() <= clientState.lastAcknowledged) ||
-                            // or the remote timestamp is not older than the local timestamp
-                            // (conflict solved in favor of remote value)
-                            (changes._s.t >= this.getTimeStamp())));
-                    var createIntervals = function (changes, localIDs) {
-                        var localValue, remoteValue;
+                    var otherIsNewer = (remoteChanged && (
+                    // and the local data version is older the last local document version
+                    // that was acknowledged by the remote (no conflict)
+                    (this.getVersion() <= clientState.lastAcknowledged) ||
+                        // or the remote timestamp is not older than the local timestamp
+                        // (conflict solved in favor of remote value)
+                        (changes._s.t >= this.getTimeStamp())));
+                    var intervals = (function () {
+                        var localValue;
+                        var remoteValue;
                         // remote values in between objects that exist on both sides
                         var intervals = [];
                         var interval = [];
                         var lastID = null;
                         var v = changes.v || [];
                         // synchronize the objects that exist on both sides
-                        for (var i = 0; i < v.length; i++) {
-                            remoteValue = v[i];
-                            if (remoteValue && remoteValue._s) {
-                                if (localIDs[remoteValue._s.id] !== undefined) {
-                                    localValue = this.get(localIDs[remoteValue._s.id]);
+                        for (var _i = 0, v_1 = v; _i < v_1.length; _i++) {
+                            var remoteValue_1 = v_1[_i];
+                            if (remoteValue_1 && remoteValue_1._s) {
+                                if (localIDs_1[remoteValue_1._s.id] !== undefined) {
+                                    localValue = _this.get(localIDs_1[remoteValue_1._s.id]);
                                     if (interval.length) {
                                         intervals.push({
                                             after: lastID,
@@ -509,7 +575,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                                 }
                             }
                             // primitive value or object not occurring in both, remember for next step
-                            interval.push(remoteValue);
+                            interval.push(remoteValue_1);
                         }
                         if (interval.length)
                             intervals.push({
@@ -518,8 +584,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                                 values: interval
                             });
                         return intervals;
-                    };
-                    var intervals = createIntervals.call(this, changes, localIDs_1);
+                    })();
                     // synchronize the intervals between the objects that exist on both sides
                     if (otherIsNewer) {
                         while (intervals.length) {
@@ -550,7 +615,8 @@ var __extends = (this && this.__extends) || function (d, b) {
                 sharedIDs.push(remoteValue._s.id);
             }, this);
             // split local array into chunks
-            var chunks = [], chunk = [];
+            var chunks = [];
+            var chunk = [];
             data.forEach(function (localValue) {
                 // if the current value is a shared value, start a new chunk
                 if (localValue && localValue._s &&
@@ -650,8 +716,9 @@ var __extends = (this && this.__extends) || function (d, b) {
             return this.data.length;
         };
         SyncableArray.prototype.forEach = function (callback, thisArg) {
+            var _this = this;
             this.data.forEach(function (value, index, arr) {
-                value = makeSyncable(this.document, value);
+                value = makeSyncable(_this.document, value);
                 callback.call(thisArg, value, index, arr);
             }, this);
         };
@@ -683,7 +750,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         SyncableArray.prototype.lastIndexOf = function (searchElement, fromIndex) {
             if (searchElement instanceof Syncable) {
-                searchElement = searchElement.getRawData();
+                searchElement = searchElement.getInternalData();
             }
             return this.data.lastIndexOf(searchElement, fromIndex);
         };
@@ -691,8 +758,8 @@ var __extends = (this && this.__extends) || function (d, b) {
             var item = this.data.slice().pop();
             var index = this.lastIndexOf(item);
             this.removeAt(index);
-            if (item && item["_s"])
-                delete item["_s"];
+            if (item && item._s)
+                delete item._s;
             return item;
         };
         SyncableArray.prototype.push = function () {
@@ -747,35 +814,49 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         /**
          * Determines whether the specified callback function returns true for any element of an array.
-         * @param callbackfn A function that accepts up to three arguments. The some method calls the callbackfn function for each element in array1 until the callbackfn returns true, or until the end of the array.
-         * @param thisArg An object to which the this keyword can refer in the callbackfn function. If thisArg is omitted, undefined is used as the this value.
+         * @param callbackfn A function that accepts up to three arguments.
+         *        The some method calls the callbackfn function for each element in array1
+         *        until the callbackfn returns true, or until the end of the array.
+         * @param thisArg An object to which the this keyword can refer in the callbackfn function.
+         *        If thisArg is omitted, undefined is used as the this value.
          */
         SyncableArray.prototype.some = function (callbackfn, thisArg) {
             var data = this.getData();
             return Array.prototype.some.apply(data, arguments);
         };
         /**
-         * Calls the specified callback function for all the elements in an array, in descending order. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
-         * @param callbackfn A function that accepts up to four arguments. The reduceRight method calls the callbackfn function one time for each element in the array.
-         * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
+         * Calls the specified callback function for all the elements in an array, in descending order.
+         * The return value of the callback function is the accumulated result,
+         * and is provided as an argument in the next call to the callback function.
+         * @param callbackfn A function that accepts up to four arguments.
+         * The reduceRight method calls the callbackfn function one time for each element in the array.
+         * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation.
+         * The first call to the callbackfn function provides this value as an argument instead of an array value.
          */
         SyncableArray.prototype.reduceRight = function (callbackfn, initialValue) {
             var data = this.getData();
             return Array.prototype.reduceRight.apply(data, arguments);
         };
         /**
-         * Calls the specified callback function for all the elements in an array. The return value of the callback function is the accumulated result, and is provided as an argument in the next call to the callback function.
-         * @param callbackfn A function that accepts up to four arguments. The reduce method calls the callbackfn function one time for each element in the array.
-         * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation. The first call to the callbackfn function provides this value as an argument instead of an array value.
+         * Calls the specified callback function for all the elements in an array.
+         * The return value of the callback function is the accumulated result,
+         * and is provided as an argument in the next call to the callback function.
+         * @param callbackfn A function that accepts up to four arguments.
+         * The reduce method calls the callbackfn function one time for each element in the array.
+         * @param initialValue If initialValue is specified, it is used as the initial value to start the accumulation.
+         * The first call to the callbackfn function provides this value as an argument instead of an array value.
          */
         SyncableArray.prototype.reduce = function (callbackfn, initialValue) {
             var data = this.getData();
             return Array.prototype.reduce.apply(data, arguments);
         };
         /**
-         * Calls a defined callback function on each element of an array, and returns an array that contains the results.
-         * @param callbackfn A function that accepts up to three arguments. The map method calls the callbackfn function one time for each element in the array.
-         * @param thisArg An object to which the this keyword can refer in the callbackfn function. If thisArg is omitted, undefined is used as the this value.
+         * Calls a defined callback function on each element of an array,
+         * and returns an array that contains the results.
+         * @param callbackfn A function that accepts up to three arguments.
+         * The map method calls the callbackfn function one time for each element in the array.
+         * @param thisArg An object to which the this keyword can refer in the callbackfn function.
+         * If thisArg is omitted, undefined is used as the this value.
          */
         SyncableArray.prototype.map = function (callbackfn, thisArg) {
             var data = this.getData();
@@ -783,7 +864,8 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         /**
          * Adds all the elements of an array separated by the specified separator string.
-         * @param separator A string used to separate one element of an array from the next in the resulting String. If omitted, the array elements are separated with a comma.
+         * @param separator A string used to separate one element of an array from the next in the resulting String.
+         * If omitted, the array elements are separated with a comma.
          */
         SyncableArray.prototype.join = function (separator) {
             var data = this.getData();
@@ -791,8 +873,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         };
         /**
          * Determines whether all the members of an array satisfy the specified test.
-         * @param callbackfn A function that accepts up to three arguments. The every method calls the callbackfn function for each element in array1 until the callbackfn returns false, or until the end of the array.
-         * @param thisArg An object to which the this keyword can refer in the callbackfn function. If thisArg is omitted, undefined is used as the this value.
+         * @param callbackfn A function that accepts up to three arguments.
+         * The every method calls the callbackfn function for each element in array1 until the callbackfn returns false,
+         * or until the end of the array.
+         * @param thisArg An object to which the this keyword can refer in the callbackfn function.
+         * If thisArg is omitted, undefined is used as the this value.
          */
         SyncableArray.prototype.every = function (callbackfn, thisArg) {
             var data = this.getData();
@@ -815,13 +900,13 @@ var __extends = (this && this.__extends) || function (d, b) {
          * @param comparefn Optional compare function
          */
         SyncableArray.prototype.sort = function (comparefn) {
-            comparefn = comparefn || function (a, b) {
+            comparefn = comparefn || (function (a, b) {
                 if (String(a) < String(b))
                     return -1;
                 if (String(a) > String(b))
                     return 1;
                 return 0;
-            };
+            });
             var wrapperFn = function (a, b) {
                 return comparefn(makeRaw(a), makeRaw(b));
             };
@@ -839,9 +924,9 @@ var __extends = (this && this.__extends) || function (d, b) {
      */
     var sameType = function (one, two) {
         if (one instanceof Syncable)
-            one = one.getRawData();
+            one = one.getInternalData();
         if (two instanceof Syncable)
-            two = two.getRawData();
+            two = two.getInternalData();
         return typeof one === typeof two;
     };
 });

@@ -3,21 +3,20 @@
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./syncable", "./document", "./types", "./uid", "./base64"], factory);
+        define(["require", "exports", "./base64", "./document", "./syncable", "./types", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
-    var syncable_1 = require("./syncable");
+    var base64 = require("./base64");
     var document_1 = require("./document");
+    var syncable_1 = require("./syncable");
     var types_1 = require("./types");
     var uid = require("./uid");
-    var base64 = require("./base64");
     // TODO: P2P communication mechanism (default implementation)
-    // TODO: Proxy object
     // TODO: events for remote changes
     // Public API
     function from(data, restore) {
-        return new document_1["default"](data || {}, restore);
+        return new document_1.Document(data || {}, restore);
     }
     exports.from = from;
     function createID() {
@@ -25,7 +24,7 @@
     }
     exports.createID = createID;
     function restore(data) {
-        return new document_1["default"](data || {}, true);
+        return new document_1.Document(data || {}, true);
     }
     exports.restore = restore;
     // Private API exposed for unit tests only

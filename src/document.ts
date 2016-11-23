@@ -1,7 +1,7 @@
 import * as base64 from "./base64";
-import * as uid from "./uid";
 import {Syncable} from "./syncable";
-import {isArray, ClientState, ClientID, Version, State, AnyWithState} from "./types";
+import {AnyWithState, ClientID, ClientState, isArray, State, Version} from "./types";
+import * as uid from "./uid";
 
 /**
  * Represents a single syncable document (top-level JSON object or array)
@@ -9,7 +9,7 @@ import {isArray, ClientState, ClientID, Version, State, AnyWithState} from "./ty
  * The Document is composed out of Syncable instances (wrappers around objects or arrays),
  * and primitive values. It can be nested arbitrarily deep, but all Syncables link back to the master Document.
  */
-export default class Document extends Syncable {
+export class Document extends Syncable {
 
     /**
      * Document class constructor
@@ -18,10 +18,10 @@ export default class Document extends Syncable {
      * @constructor Document
      */
     constructor(data: ChangesObject | any, restore?: boolean) {
-        if (typeof data != "object") throw "Argument must be an object";
+        if (typeof data !== "object") throw "Argument must be an object";
         if (isArray(data)) throw "Argument cannot be an array";
         let isChanges: boolean =
-            data && data._minisync && (data._minisync.dataType == "CHANGES");
+            data && data._minisync && (data._minisync.dataType === "CHANGES");
         if (isChanges && data.changesSince) throw "change block must be non-delta";
         let shouldMerge: boolean = isChanges && !restore;
         let shouldRestore: boolean = isChanges && restore;
@@ -33,7 +33,7 @@ export default class Document extends Syncable {
             this.getDocVersion();
             this.mergeChanges(data);
             // for all client states, mark last confirmed send as current version
-            let clientStates: Array<ClientState> = this.getClientStates();
+            let clientStates: ClientState[] = this.getClientStates();
             for (let i: number = 0; i < clientStates.length; i++) {
                 let clientState = clientStates[i];
                 clientState.lastAcknowledged = this.getDocVersion();
@@ -61,14 +61,6 @@ export default class Document extends Syncable {
     }
 
     /**
-     * Change the unique client ID of the document on this machine
-     * @param {string} id
-     */
-    private setClientID(id: Version): void {
-        this.getState().clientID = id;
-    }
-
-    /**
      * Return the master version for this document
      * @returns {string}
      */
@@ -76,14 +68,6 @@ export default class Document extends Syncable {
         let version: Version = this.getState().v;
         if (!version) version = this.nextDocVersion();
         return version;
-    }
-
-    /**
-     * Set the version of this document to a different one
-     * @param {string} v
-     */
-    private setDocVersion(v: Version): void {
-        this.getState().v = v;
     }
 
     /**
@@ -101,7 +85,7 @@ export default class Document extends Syncable {
      * @return {*} state object = {clientID, lastAcknowledged, lastReceived}
      */
     public getClientState(clientID: ClientID): ClientState {
-        let states: Array<ClientState> = this.getClientStates();
+        let states: ClientState[] = this.getClientStates();
         let clientData: ClientState;
         for (let i: number = 0; i < states.length; i++) {
             if (states[i].clientID === clientID) {
@@ -110,7 +94,7 @@ export default class Document extends Syncable {
             }
         }
         if (!clientData) states.push(clientData = {
-            clientID: clientID,
+            clientID,
             // local version last confirmed as received remotely
             // we should send only newer versions than this
             lastAcknowledged: null,
@@ -125,19 +109,10 @@ export default class Document extends Syncable {
      * Return an array of the remote state objects for all known clients
      * @returns {Array}
      */
-    public getClientStates(): Array<ClientState> {
+    public getClientStates(): ClientState[] {
         let state: State = this.getState();
         if (!state.remote) state.remote = [];
         return state.remote;
-    }
-
-    /**
-     * Set a new array of remote client states
-     * @param states
-     */
-    private setClientStates(states: Array<ClientState>): void {
-        let state: State = this.getState();
-        state.remote = states || [];
     }
 
     /**
@@ -162,8 +137,8 @@ export default class Document extends Syncable {
             sentBy: this.getClientID(),
             fromVersion: this.getDocVersion(),
             clientStates: this.getClientStates(),
-            changesSince: changesSince,
-            changes: changes
+            changesSince,
+            changes
         };
     }
 
@@ -179,7 +154,7 @@ export default class Document extends Syncable {
             // state of this client as stored in the remote copy of the document
             let remoteState: ClientState = null;
             for (let i: number = 0; i < data.clientStates.length; i++) {
-                if (data.clientStates[i].clientID == this.getClientID()) {
+                if (data.clientStates[i].clientID === this.getClientID()) {
                     remoteState = data.clientStates[i];
                     break;
                 }
@@ -194,7 +169,7 @@ export default class Document extends Syncable {
 
             for (let j: number = 0; j < data.clientStates.length; j++) {
                 remoteState = data.clientStates[j];
-                if (remoteState.clientID != this.getClientID()) {
+                if (remoteState.clientID !== this.getClientID()) {
                     let localState: ClientState = this.getClientState(remoteState.clientID);
                     // update remote version that was last received
                     if (localState.lastReceived < remoteState.lastReceived) {
@@ -203,7 +178,7 @@ export default class Document extends Syncable {
                     // if our state matches the state of the other client
                     // and their state matches the state of the third party
                     // the third party has received our version already
-                    if (allWasSent && (data.fromVersion == remoteState.lastAcknowledged)) {
+                    if (allWasSent && (data.fromVersion === remoteState.lastAcknowledged)) {
                         localState.lastAcknowledged = this.getDocVersion();
                     }
                 }
@@ -219,12 +194,37 @@ export default class Document extends Syncable {
         }
     }
 
+    /**
+     * Change the unique client ID of the document on this machine
+     * @param {string} id
+     */
+    private setClientID(id: Version): void {
+        this.getState().clientID = id;
+    }
+
+    /**
+     * Set the version of this document to a different one
+     * @param {string} v
+     */
+    private setDocVersion(v: Version): void {
+        this.getState().v = v;
+    }
+
+    /**
+     * Set a new array of remote client states
+     * @param states
+     */
+    private setClientStates(states: ClientState[]): void {
+        let state: State = this.getState();
+        state.remote = states || [];
+    }
+
 }
 
 /**
  * JSON object that carries document changes between clients
  */
-interface ChangesObject {
+export interface ChangesObject {
     /** Allows identifying this as a ChangesObject when untyped */
     _minisync: ChangesObjectVersion;
     /** Which client sent these changes */
@@ -232,7 +232,7 @@ interface ChangesObject {
     /** The client's version the changes were taken from */
     fromVersion: Version;
     /** The state of all peers as known to that client */
-    clientStates: Array<ClientState>;
+    clientStates: ClientState[];
     /** The version starting from which changes are reported */
     changesSince: Version;
     /** The changes themselves */

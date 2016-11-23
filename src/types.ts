@@ -1,6 +1,7 @@
 export type Version = string;
 export type ClientID = string;
 export type ObjectID = string;
+export type Proxy = any;
 
 /**
  * Returns true if the given parameter is an Array

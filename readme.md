@@ -80,8 +80,6 @@ Only properties set through these methods are synchronized.
 Changing
 --------
 
-Edit minisync.ts
-
 To build a new version:
 
      npm install -g typescript # just once
@@ -109,10 +107,11 @@ causing data loss across all clients when a new minisync version is deployed!
 
 Also:
 
-- Data can only be changed through the minisync api.
+- Data can only be changed through the minisync api. 
+  (getProxy() can be used to get a proxy object for the internal data object)
 - Only an object can be synchronized, but the object can have arbitrary nested properties, including arrays.
 - Arrays do not properly support sorting yet.
-- Conflicting changes are resolved through "latest change wins" principle.
+- Conflicting changes are resolved by "latest change wins" rule.
 - Synchronizes at the level of objects and arrays (see below for details).
 
 Theory of operation: two participants

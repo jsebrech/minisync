@@ -1,38 +1,27 @@
 {
+    "extends": "tslint:recommended",
     "rules": {
-        "class-name": true,
-        "comment-format": [true,
-            "check-space"
-        ],
-        "indent": [true,
-            "spaces"
-        ],
-        "one-line": [true,
-            "check-open-brace",
-            "check-whitespace"
-        ],
-        "no-var-keyword": true,
-        "quotemark": [true,
-            "double",
-            "avoid-escape"
-        ],
-        "semicolon": [true, "always"],
-        "whitespace": [true,
-            "check-branch",
-            "check-operator",
-            "check-separator",
-            "check-type",
-            "check-module"
-        ],
-        "typedef-whitespace": [true, {
-            "call-signature": "nospace",
-            "index-signature": "nospace",
-            "parameter": "nospace",
-            "property-declaration": "nospace",
-            "variable-declaration": "nospace"
-        }],
-        "no-internal-module": true,
-        "no-trailing-whitespace": true,
-        "no-unused-variable": true
-  }
+        // allow if statements without curly braces
+        "curly": false,
+        // never have trailing comma's in arrays
+        "trailing-comma": [true, {"multiline": "never", "singleline": "never"}],
+        // don't require object keys to be sorted
+        "object-literal-sort-keys": false,
+        // don't require interface names to start with I
+        "interface-name": [false],
+        // don't limit number of classes per file (defaults to 1)
+        "max-classes-per-file": [false],
+        // allow variable names to start with underscore
+        "variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore"]
+    },
+    "jsRules": {
+        // allow if statements without curly braces
+        "curly": false,
+        // allow single quotes
+        "quotemark": [false],
+        // never have trailing comma's in arrays
+        "trailing-comma": [true, {"multiline": "never", "singleline": "never"}],
+        // don't require object keys to be sorted
+        "object-literal-sort-keys": false
+    }
 }

@@ -8,14 +8,14 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./base64", "./uid", "./syncable", "./types"], factory);
+        define(["require", "exports", "./base64", "./syncable", "./types", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
     var base64 = require("./base64");
-    var uid = require("./uid");
     var syncable_1 = require("./syncable");
     var types_1 = require("./types");
+    var uid = require("./uid");
     /**
      * Represents a single syncable document (top-level JSON object or array)
      * Keeps track of client state for this document across all the clients.
@@ -31,11 +31,11 @@ var __extends = (this && this.__extends) || function (d, b) {
          * @constructor Document
          */
         function Document(data, restore) {
-            if (typeof data != "object")
+            if (typeof data !== "object")
                 throw "Argument must be an object";
             if (types_1.isArray(data))
                 throw "Argument cannot be an array";
-            var isChanges = data && data._minisync && (data._minisync.dataType == "CHANGES");
+            var isChanges = data && data._minisync && (data._minisync.dataType === "CHANGES");
             if (isChanges && data.changesSince)
                 throw "change block must be non-delta";
             var shouldMerge = isChanges && !restore;
@@ -77,13 +77,6 @@ var __extends = (this && this.__extends) || function (d, b) {
             return state.clientID;
         };
         /**
-         * Change the unique client ID of the document on this machine
-         * @param {string} id
-         */
-        Document.prototype.setClientID = function (id) {
-            this.getState().clientID = id;
-        };
-        /**
          * Return the master version for this document
          * @returns {string}
          */
@@ -92,13 +85,6 @@ var __extends = (this && this.__extends) || function (d, b) {
             if (!version)
                 version = this.nextDocVersion();
             return version;
-        };
-        /**
-         * Set the version of this document to a different one
-         * @param {string} v
-         */
-        Document.prototype.setDocVersion = function (v) {
-            this.getState().v = v;
         };
         /**
          * Increment the document version and return it
@@ -145,14 +131,6 @@ var __extends = (this && this.__extends) || function (d, b) {
             return state.remote;
         };
         /**
-         * Set a new array of remote client states
-         * @param states
-         */
-        Document.prototype.setClientStates = function (states) {
-            var state = this.getState();
-            state.remote = states || [];
-        };
-        /**
          * Get updates to send to a remote client
          * @param {String} [clientID] Unique ID string for the remote client to get a delta update.
          * Leave empty to generate a universal state object containing the whole document
@@ -190,7 +168,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                 // state of this client as stored in the remote copy of the document
                 var remoteState = null;
                 for (var i = 0; i < data.clientStates.length; i++) {
-                    if (data.clientStates[i].clientID == this.getClientID()) {
+                    if (data.clientStates[i].clientID === this.getClientID()) {
                         remoteState = data.clientStates[i];
                         break;
                     }
@@ -204,7 +182,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                 clientState.lastReceived = data.fromVersion;
                 for (var j = 0; j < data.clientStates.length; j++) {
                     remoteState = data.clientStates[j];
-                    if (remoteState.clientID != this.getClientID()) {
+                    if (remoteState.clientID !== this.getClientID()) {
                         var localState = this.getClientState(remoteState.clientID);
                         // update remote version that was last received
                         if (localState.lastReceived < remoteState.lastReceived) {
@@ -213,7 +191,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                         // if our state matches the state of the other client
                         // and their state matches the state of the third party
                         // the third party has received our version already
-                        if (allWasSent && (data.fromVersion == remoteState.lastAcknowledged)) {
+                        if (allWasSent && (data.fromVersion === remoteState.lastAcknowledged)) {
                             localState.lastAcknowledged = this.getDocVersion();
                         }
                     }
@@ -228,9 +206,30 @@ var __extends = (this && this.__extends) || function (d, b) {
                 throw "Invalid changes object";
             }
         };
+        /**
+         * Change the unique client ID of the document on this machine
+         * @param {string} id
+         */
+        Document.prototype.setClientID = function (id) {
+            this.getState().clientID = id;
+        };
+        /**
+         * Set the version of this document to a different one
+         * @param {string} v
+         */
+        Document.prototype.setDocVersion = function (v) {
+            this.getState().v = v;
+        };
+        /**
+         * Set a new array of remote client states
+         * @param states
+         */
+        Document.prototype.setClientStates = function (states) {
+            var state = this.getState();
+            state.remote = states || [];
+        };
         return Document;
     }(syncable_1.Syncable));
-    exports.__esModule = true;
-    exports["default"] = Document;
+    exports.Document = Document;
 });
 //# sourceMappingURL=document.js.map
