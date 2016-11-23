@@ -6,8 +6,6 @@ import * as uid from "./uid";
 
 // TODO: P2P communication mechanism (default implementation)
 
-// TODO: events for remote changes
-
 // Public API
 
 export function from (data: ChangesObject | any, restore?: boolean): Document {
