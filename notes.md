@@ -319,38 +319,49 @@ Ideas:
   and from ClientState.url for every known client (= all known copies)
 - There is no identity associated with a document, only a client id per device, and a set of storage locations.
 
-Cloud storage P2P backend
--------------------------
+P2P backend strategy
+--------------------
 
-ClientState.url = URL(s) to download updates from
-- If string, single url containing all changes
-- If object, keys are: version, changes.base, changes.latest (see below)
+**Single user, multiple clients**
 
-To download remote changes, for every remote client:
-1. Check [url]/version.json and compare with local ClientState.lastReceived
-2. If newer, download [url]/changes.latest.json
-3. If oldest version from latest is older than ClientState.lastReceived, merge it and done
-4. Otherwise, download [url]/changes.base.json, merge it, then merge changes.latest.json 
+All clients sync to their own folder and subscribe to each other's folders.
+A client is linked to one or more storage accounts, and uploads to its own folder in that account.
+Syncing is segmented to minimize upload size.
+Index files allow detecting changes with minimal bandwidth use.
 
-Note: do this also for all documentid/clientid folders in the linked cloud storage account(s).
+ClientState.url = URL of index file for a client, string
+Points to an index file that points to the other files.
 
-Files:
-- version.json = used to track whether changes occurred
-- changes.base.json = all changes from oldest to some version (written when latest.json is > 30% of base.json)
-- changes.latest.json = all changes from base version to latest version (written every time)
+Index file contents (json):
+- latest: string = latest version
+- clientId: string = unique id of the client that owns this file (generated)
+- clientName: string = label for this client (user-editable)
+- part[version]: string = url of part file
+- part...: string = url of successive part files
+
+Part file:
+- File name = part + first version in file
+- Contains a range of versions.
+- Only the latest file is written to, and only to append new versions.
+- A new file is started every 500 KB
+
+To download remote changes
+1. For every client:
+  a. Check index file and compare with local ClientState.lastReceived
+  b. If newer, download all parts with versions we need
+  c. Merge the parts in order
+2. Repeat for new clients (from merge) until all clients are merged
 
 To upload changes, for every linked cloud storage account:
-1. If base needs updating, write changes.base.json (= everything up to latest version)
-2. Write changes.latest.json (= from base version to latest version, if base was written this is only the latest version)
-3. Write version.json
-4. Optionally: share url(s) with user
+1. Determine the client folder to write to (based on unique client id)
+2. Write the necessary parts files
+3. Write an updated index file
 
-Note: for initial write, changes.latest.json will only have the latest version
-Note: use dropbox http api: https://www.dropbox.com/developers/documentation/http/documentation
+Linked storage account:
+- 1 folder per document, containing:
+- 1 folder per client named "client{client id}" (with index file and part files)
+- use dropbox http api: https://www.dropbox.com/developers/documentation/http/documentation
 
-Storing locally (localstorage):
+Storing locally (indexeddb with localstorage fallback):
 - Keep entire document (all changes)
 - Store as minisync-[document id]-[client id]
-
-Plugin API:
-minisync.addStorage(instance)
