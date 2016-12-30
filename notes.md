@@ -329,11 +329,12 @@ A client is linked to one or more storage accounts, and uploads to its own folde
 Syncing is segmented to minimize upload size.
 Index files allow detecting changes with minimal bandwidth use.
 
-ClientState.url = URL of index file for a client, string
+ClientState.url = URL of client index file, string
 Points to an index file that points to the other files.
 
-Index file contents (json):
+Client index file contents (json):
 - latest: string = latest version
+- master: string = master index file url
 - clientId: string = unique id of the client that owns this file (generated)
 - clientName: string = label for this client (user-editable)
 - part[version]: string = url of part file
@@ -345,23 +346,53 @@ Part file:
 - Only the latest file is written to, and only to append new versions.
 - A new file is started every 500 KB
 
+Master index file:
+- client[client id]:
+  - url: points to index file
+- latestUpdate: 
+  - client: string = client id
+  - version: string = client version that was written
+
 To download remote changes
-1. For every client:
-  a. Check index file and compare with local ClientState.lastReceived
+1. Download our master index file to get updated list of clients
+  - This url is cached locally when the document is first downloaded
+2. For every client from master index file, download changes
+  a. Check client index file and compare with local ClientState.lastReceived
   b. If newer, download all parts with versions we need
   c. Merge the parts in order
-2. Repeat for new clients (from merge) until all clients are merged
+3. Sync remote users (see below)
 
 To upload changes, for every linked cloud storage account:
-1. Determine the client folder to write to (based on unique client id)
-2. Write the necessary parts files
-3. Write an updated index file
+1. Write the necessary parts files
+2. Write an updated client index file
+3. Fetch the master index file
+4. Update master index with client (if needed) and latestUpdate, write it
 
 Linked storage account:
 - 1 folder per document, containing:
 - 1 folder per client named "client{client id}" (with index file and part files)
 - use dropbox http api: https://www.dropbox.com/developers/documentation/http/documentation
+- doesn't need to be folder-based, only url-based
 
 Storing locally (indexeddb with localstorage fallback):
 - Keep entire document (all changes)
 - Store as minisync-[document id]-[client id]
+
+**Multiple users**
+
+First share:
+1. Alice shares url of master index to bob
+2. Bob syncs changes for that source
+  a. Download master index file
+  b. Bob checks latestUpdate, downloads that client's changes and merges them
+3. Bob performs sync with other remote users
+
+Sync with remote users:
+1. Extract the list of master index url's from the known clientstates
+2. For every unique master index url, download changes
+3. Bob uploads the synchronized document to his linked storage account
+4. Bob shares the master index file url back to Alice (and other remote users)
+
+What is needed?
+1. Ability to download url's
+2. Channel for communicating master index url's back and forth (e.g chat, e-mail, ...)
