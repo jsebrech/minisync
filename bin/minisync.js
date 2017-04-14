@@ -13,7 +13,6 @@
     var types_1 = require("./types");
     var uid = require("./uid");
     // TODO: P2P communication mechanism (default implementation)
-    // TODO: events for remote changes
     // Public API
     function from(data, restore) {
         return new document_1.Document(data || {}, restore);

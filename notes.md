@@ -396,3 +396,71 @@ Sync with remote users:
 What is needed?
 1. Ability to download url's
 2. Channel for communicating master index url's back and forth (e.g chat, e-mail, ...)
+
+Dropbox API
+-----------
+
+https://www.dropbox.com/developers/documentation/http/documentation
+
+**/upload**
+
+Send
+
+      {
+          // write to this path
+          "path": "/minisync/<document id>/...",
+          // always overwrite, even if there's a conflict
+          "mode": "overwrite",
+          // don't send notification file is changed
+          "mute": true
+      }
+
+Returns
+
+      {
+          "name": "....json",
+          "id": "id:a4ayc_80_OEAAAAAAAAAXw",
+          "client_modified": "2015-05-12T15:50:38Z",
+          "server_modified": "2015-05-12T15:50:38Z",
+          "rev": "a1c10ce0dd78",
+          "size": 7212,
+          "path_lower": "/minisync/.../....json",
+          "path_display": "/minisync/.../....json",
+          "sharing_info": {
+              "read_only": true,
+              "parent_shared_folder_id": "84528192421",
+              "modified_by": "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc"
+          },
+          "property_groups": [
+              {
+                  "template_id": "ptid:1a5n2i6d3OYEAAAAAAAAAYa",
+                  "fields": [
+                      {
+                          "name": "Security Policy",
+                          "value": "Confidential"
+                      }
+                  ]
+              }
+          ],
+          "has_explicit_shared_members": false
+      }
+
+**/download**
+
+Send
+
+      {
+          "path": "/Homework/math/Prime_Numbers.txt"
+      }
+      or
+      {
+          "path": "id:a4ayc_80_OEAAAAAAAAAYa"
+      }
+
+**/create_folder**
+
+**/list_folder**
+
+**/create_shared_link_with_settings**
+
+Publish a file as a link so it can be downloaded without a dropbox account.

@@ -64,13 +64,13 @@ export interface State {
     /** true if this is the state for an array */
     a?: boolean;
     /** for arrays, list of removed objects */
-    ri?: Array<ArrayRemovedObject>;
+    ri?: ArrayRemovedObject[];
     /** only for Document, the document-level version */
     v?: Version;
     /** only for Document, the client id for the local client managing the document */
     clientID?: ClientID;
     /** only for Document, version-tracking for the versions known by remote clients */
-    remote?: Array<ClientState>;
+    remote?: ClientState[];
 }
 
 export interface ArrayRemovedObject {

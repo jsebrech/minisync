@@ -2,12 +2,12 @@
  * Unique ID generator
  */
 
-import {padStr, ClientID} from "./types";
 import * as base64 from "./base64";
+import {ClientID, padStr} from "./types";
 
 interface LastUid {
     at: number;
-    uids: Array<number>;
+    uids: number[];
 }
 
 let lastUid: LastUid = { at: null, uids: [] };
@@ -29,6 +29,7 @@ function create(): ClientID {
         // 15 bits of randomness
         // random ensures low risk of collision inside a seconds
         let random: number =
+            // tslint:disable-next-line:no-bitwise
             Math.floor(Math.random() * Math.pow(2, 32)) &
             (Math.pow(2, 15) - 1);
         // uid = 15 bits of random + 32/33 bits of time
