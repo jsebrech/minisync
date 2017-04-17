@@ -14,16 +14,31 @@
     var uid = require("./uid");
     // TODO: P2P communication mechanism (default implementation)
     // Public API
+    /**
+     * Create a minisync Document from a data object or minisync changes object (bootstraps a new client)
+     * @param data The changes object to reconstruct from
+     * @param restore
+     * @return The minisync Document
+     */
     function from(data, restore) {
         return new document_1.Document(data || {}, restore);
     }
     exports.from = from;
+    /**
+     * Create a unique client identifier.
+     * @return The client identifier
+     */
     function createID() {
         return uid.next();
     }
     exports.createID = createID;
+    /**
+     * Reconstruct the client state of the client that creates a changes object
+     * @param data A changes object generated with document.getChanges
+     * @return The minisync Document
+     */
     function restore(data) {
-        return new document_1.Document(data || {}, true);
+        return from(data, true);
     }
     exports.restore = restore;
     // Private API exposed for unit tests only
