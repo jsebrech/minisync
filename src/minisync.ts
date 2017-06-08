@@ -5,13 +5,14 @@ import {ClientID, dateToString} from "./types";
 import * as uid from "./uid";
 
 // TODO: P2P communication mechanism (default implementation)
+// TODO: longer version strings, or make version compare length-agnostic
 
 // Public API
 
 /**
- * Create a minisync Document from a data object or minisync changes object (bootstraps a new client)
- * @param data The changes object to reconstruct from
- * @param restore 
+ * Create a minisync Document from a raw object or minisync changes object (bootstraps a new client)
+ * @param data The changes object to reconstruct from, or the raw object to create a new Document for
+ * @param restore For changes objects, if true retores the Document to memory (as the client that exported the changes)
  * @return The minisync Document
  */
 export function from (data: ChangesObject | any, restore?: boolean): Document {
@@ -27,8 +28,8 @@ export function createID(): ClientID {
 }
 
 /**
- * Reconstruct the client state of the client that creates a changes object
- * @param data A changes object generated with document.getChanges
+ * Restore a Document from a changes object (as the client that created it)
+ * @param data A complete changes object generated with document.getChanges
  * @return The minisync Document
  */
 export function restore(data: ChangesObject): Document {

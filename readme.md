@@ -110,7 +110,6 @@ Also:
 - Data can only be changed through the minisync api. 
   (getProxy() can be used to get a proxy object for the internal data object)
 - Only an object can be synchronized, but the object can have arbitrary nested properties, including arrays.
-- Arrays do not properly support sorting yet.
 - Conflicting changes are resolved by "latest change wins" rule.
 - Synchronizes at the level of objects and arrays (see below for details).
 

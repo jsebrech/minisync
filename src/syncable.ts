@@ -1,3 +1,4 @@
+import { isNewerVersion } from "./base64";
 import {Document} from "./document";
 import {
     AnyValue, AnyWithState, ArrayRemovedObject, ArrayWithState,
@@ -282,7 +283,7 @@ export class Syncable {
                         }
                     }
                 } else {
-                    if (this.getVersion() > version) {
+                    if (isNewerVersion(this.getVersion(), version)) {
                         if (!result) result = this.getChangesResultObject();
                         if (!resultSetter) {
                             result[key] = value;
@@ -325,10 +326,10 @@ export class Syncable {
         if (!changes) return;
         // if the remote version of the object is newer than the last received
         let otherIsNewer: boolean = ( changes._s &&
-            ( (changes._s.u > clientState.lastReceived) &&
+            ( isNewerVersion(changes._s.u, clientState.lastReceived) &&
                 // and the local data version is older the last local document version
                 // that was acknowledged by the remote (no conflict)
-                ( (this.getVersion() <= clientState.lastAcknowledged) ||
+                ( !isNewerVersion(this.getVersion(), clientState.lastAcknowledged) ||
                     // or the remote timestamp is not older than the local timestamp
                     // (conflict solved in favor of remote value)
                     (changes._s.t >= this.getTimeStamp())
@@ -545,7 +546,7 @@ export class SyncableArray extends Syncable {
             }, this);
 
             // the remote version of the array is newer than the last received
-            let remoteChanged: boolean = (changes._s.u > clientState.lastReceived);
+            let remoteChanged: boolean = isNewerVersion(changes._s.u, clientState.lastReceived);
             if (remoteChanged) {
                 let sortedData = this.sortByRemote(changes.v);
                 this.data.splice.apply(this.data, [0, this.data.length].concat(sortedData));
@@ -554,7 +555,7 @@ export class SyncableArray extends Syncable {
                     ( remoteChanged && (
                         // and the local data version is older the last local document version
                         // that was acknowledged by the remote (no conflict)
-                        (this.getVersion() <= clientState.lastAcknowledged) ||
+                        !isNewerVersion(this.getVersion(), clientState.lastAcknowledged) ||
                         // or the remote timestamp is not older than the local timestamp
                         // (conflict solved in favor of remote value)
                         (changes._s.t >= this.getTimeStamp())

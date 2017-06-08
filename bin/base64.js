@@ -3,10 +3,11 @@
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports"], factory);
+        define(["require", "exports", "./types"], factory);
     }
 })(function (require, exports) {
     "use strict";
+    var types_1 = require("./types");
     /**
      * Base 64 encode/decode (6 bits per character)
      * (not MIME compatible)
@@ -63,5 +64,27 @@
         return v;
     }
     exports.nextVersion = nextVersion;
+    /**
+     * Returns true if the first parameter is a newer version than the old
+     * @param vNew
+     * @param vOld
+     */
+    function isNewerVersion(vNew, vOld) {
+        if (!vNew) {
+            return false;
+        }
+        else if (vNew && !vOld) {
+            return true;
+        }
+        else if (vNew.length === vOld.length) {
+            return vNew > vOld;
+        }
+        else if (vNew.length > vOld.length) {
+            return isNewerVersion(vNew, types_1.padStr(vOld, vNew.length));
+        }
+        else
+            return false;
+    }
+    exports.isNewerVersion = isNewerVersion;
 });
 //# sourceMappingURL=base64.js.map

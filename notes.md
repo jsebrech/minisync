@@ -332,13 +332,23 @@ Index files allow detecting changes with minimal bandwidth use.
 ClientState.url = URL of client index file, string
 Points to an index file that points to the other files.
 
-Client index file contents (json):
-- latest: string = latest version
-- master: string = master index file url
-- clientId: string = unique id of the client that owns this file (generated)
-- clientName: string = label for this client (user-editable)
-- part[version]: string = url of part file
-- part...: string = url of successive part files
+*Files*
+
+Types of files:
+- `client-index.json` file: for a client of a specific Document, keeps track of the version 
+  as well as where to find the parts files containing the Document's data.
+- `partXXX.json` file(s): the actual document as exported by a specific client, split into chunks
+- `master-index.json` file: for a user, keeps track of all clients of a document, their own and those by others.
+  Points to client index files for each client.
+
+`client-index.json` file contents:
+- `latest`: string = latest version
+- `master`: string = master index file url
+- `updated`: string = timestamp of last update
+- `clientId`: string = unique id of the client that owns this file (generated)
+- `clientName`: string = label for this client (user-editable)
+- `part000001`: string = url of part file
+- `part...`: string = url of successive part files
 
 Part file:
 - File name = part + first version in file
@@ -353,20 +363,24 @@ Master index file:
   - client: string = client id
   - version: string = client version that was written
 
+*Syncing*
+
 To download remote changes
 1. Download our master index file to get updated list of clients
-  - This url is cached locally when the document is first downloaded
+    - This url is cached locally when the document is first downloaded
 2. For every client from master index file, download changes
-  a. Check client index file and compare with local ClientState.lastReceived
-  b. If newer, download all parts with versions we need
-  c. Merge the parts in order
+    - Check client index file and compare with local ClientState.lastReceived
+    - If newer, download all parts with versions we need
+    - Merge the parts in order
 3. Sync remote users (see below)
 
 To upload changes, for every linked cloud storage account:
-1. Write the necessary parts files
-2. Write an updated client index file
-3. Fetch the master index file
-4. Update master index with client (if needed) and latestUpdate, write it
+  1. Write the necessary parts files
+  2. Write an updated client index file
+  3. Fetch the master index file
+  4. Update master index with client (if needed) and latestUpdate, write it
+
+*Storing*
 
 Linked storage account:
 - 1 folder per document, containing:
@@ -383,19 +397,19 @@ Storing locally (indexeddb with localstorage fallback):
 First share:
 1. Alice shares url of master index to bob
 2. Bob syncs changes for that source
-  a. Download master index file
-  b. Bob checks latestUpdate, downloads that client's changes and merges them
+    - Download master index file
+    - Bob checks latestUpdate, downloads that client's changes and merges them
 3. Bob performs sync with other remote users
 
 Sync with remote users:
-1. Extract the list of master index url's from the known clientstates
-2. For every unique master index url, download changes
-3. Bob uploads the synchronized document to his linked storage account
-4. Bob shares the master index file url back to Alice (and other remote users)
+  1. Extract the list of master index url's from the known clientstates
+  2. For every unique master index url, download changes
+  3. Bob uploads the synchronized document to his linked storage account
+  4. Bob shares the master index file url back to Alice (and other remote users)
 
 What is needed?
-1. Ability to download url's
-2. Channel for communicating master index url's back and forth (e.g chat, e-mail, ...)
+  1. Ability to download url's
+  2. Channel for communicating master index url's back and forth (e.g chat, e-mail, ...)
 
 Dropbox API
 -----------
@@ -464,3 +478,20 @@ Send
 **/create_shared_link_with_settings**
 
 Publish a file as a link so it can be downloaded without a dropbox account.
+
+Todo
+----
+
+Storage api:
+- store files (document id, type, identifier) and obtain private uri
+- fetch file (private uri)
+- list files (by document id, type) --> to fetch initial list of documents
+- publish stored files and obtain public url
+- authenticate
+
+Minisync core:
+- Restore from series of changes objects
+- Save to storage api
+- Restore from storage api
+- Publish to storage api
+- Subscribe to storage api

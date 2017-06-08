@@ -8,10 +8,11 @@ var __extends = (this && this.__extends) || function (d, b) {
         var v = factory(require, exports); if (v !== undefined) module.exports = v;
     }
     else if (typeof define === 'function' && define.amd) {
-        define(["require", "exports", "./types", "./uid"], factory);
+        define(["require", "exports", "./base64", "./types", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
+    var base64_1 = require("./base64");
     var types_1 = require("./types");
     var uid = require("./uid");
     /**
@@ -285,7 +286,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                         }
                     }
                     else {
-                        if (this.getVersion() > version) {
+                        if (base64_1.isNewerVersion(this.getVersion(), version)) {
                             if (!result)
                                 result = this.getChangesResultObject();
                             if (!resultSetter) {
@@ -330,10 +331,10 @@ var __extends = (this && this.__extends) || function (d, b) {
                 return;
             // if the remote version of the object is newer than the last received
             var otherIsNewer = (changes._s &&
-                ((changes._s.u > clientState.lastReceived) &&
+                (base64_1.isNewerVersion(changes._s.u, clientState.lastReceived) &&
                     // and the local data version is older the last local document version
                     // that was acknowledged by the remote (no conflict)
-                    ((this.getVersion() <= clientState.lastAcknowledged) ||
+                    (!base64_1.isNewerVersion(this.getVersion(), clientState.lastAcknowledged) ||
                         // or the remote timestamp is not older than the local timestamp
                         // (conflict solved in favor of remote value)
                         (changes._s.t >= this.getTimeStamp()))));
@@ -537,14 +538,14 @@ var __extends = (this && this.__extends) || function (d, b) {
                     }
                 }, this);
                 // the remote version of the array is newer than the last received
-                var remoteChanged = (changes._s.u > clientState.lastReceived);
+                var remoteChanged = base64_1.isNewerVersion(changes._s.u, clientState.lastReceived);
                 if (remoteChanged) {
                     var sortedData = this.sortByRemote(changes.v);
                     this.data.splice.apply(this.data, [0, this.data.length].concat(sortedData));
                     var otherIsNewer = (remoteChanged && (
                     // and the local data version is older the last local document version
                     // that was acknowledged by the remote (no conflict)
-                    (this.getVersion() <= clientState.lastAcknowledged) ||
+                    !base64_1.isNewerVersion(this.getVersion(), clientState.lastAcknowledged) ||
                         // or the remote timestamp is not older than the local timestamp
                         // (conflict solved in favor of remote value)
                         (changes._s.t >= this.getTimeStamp())));
