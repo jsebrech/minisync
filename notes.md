@@ -487,10 +487,9 @@ Storage api:
 - list files (by document id, type) --> to fetch initial list of documents
 - publish stored files and obtain public url
 - authenticate
+- Save/restore document
+- Publish/subscribe to remote store
+- wraps around core, core is storage-agnostic
 
 Minisync core:
 - Restore from series of changes objects
-- Save to storage api
-- Restore from storage api
-- Publish to storage api
-- Subscribe to storage api

@@ -18,7 +18,7 @@ function floatToBase64(num: number): string {
     let ret: string = "";
     num = Math.floor(num);
     while (num) {
-        let chr = num - (Math.floor(num / 64) * 64);
+        const chr = num - (Math.floor(num / 64) * 64);
         ret = base64chars[chr] + ret;
         num = Math.floor(num / 64);
     }
@@ -57,7 +57,7 @@ function nextVersion(v: Version = "", minLength: number = 1): Version {
 /**
  * Returns true if the first parameter is a newer version than the old
  * @param vNew
- * @param vOld 
+ * @param vOld
  */
 function isNewerVersion(vNew: Version, vOld: Version): boolean {
     if (!vNew) {

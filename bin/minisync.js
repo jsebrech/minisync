@@ -15,7 +15,6 @@
     var types_1 = require("./types");
     var uid = require("./uid");
     // TODO: P2P communication mechanism (default implementation)
-    // TODO: longer version strings, or make version compare length-agnostic
     // Public API
     /**
      * Create a minisync Document from a raw object or minisync changes object (bootstraps a new client)

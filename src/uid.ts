@@ -22,18 +22,18 @@ function create(): ClientID {
     while (true) {
         // seconds = 32 bits (until 2038), 33 bits afterwards
         // Seconds ensures low risk of collisions across time.
-        let seconds: number = Math.floor((new Date()).getTime() / 1000);
+        const seconds: number = Math.floor((new Date()).getTime() / 1000);
         if (seconds !== lastUid.at) {
             lastUid = { at: seconds, uids: [] };
         }
         // 15 bits of randomness
         // random ensures low risk of collision inside a seconds
-        let random: number =
+        const random: number =
             // tslint:disable-next-line:no-bitwise
             Math.floor(Math.random() * Math.pow(2, 32)) &
             (Math.pow(2, 15) - 1);
         // uid = 15 bits of random + 32/33 bits of time
-        let uid: number = (random * Math.pow(2, 32)) + seconds;
+        const uid: number = (random * Math.pow(2, 32)) + seconds;
         // end result is 47/48 bit random number
         // paranoia: keep track of generated id's to avoid collisions
         if (lastUid.uids.indexOf(uid) === -1) {
@@ -48,12 +48,12 @@ function create(): ClientID {
  * @return {string} 16 character string
  */
 function createLong(): ClientID {
-    let random = Math.floor(
+    const random = Math.floor(
         (Math.random() * Math.pow(2, 47)) +
         (Math.random() * Math.pow(2, 32))
     );
     return create() + padStr(base64.encodeFloat(random), 8);
 }
 
-export {create as next}
-export {createLong as nextLong}
+export {create as next};
+export {createLong as nextLong};

@@ -10,7 +10,7 @@ export type Proxy = any;
  */
 export function isArray(v: any): boolean {
     return Object.prototype.toString.call(v) === "[object Array]";
-};
+}
 
 /**
  * Return a date string which can be compared using < and >
@@ -25,7 +25,7 @@ export function dateToString(date: Date): string {
            padStr(date.getUTCHours().toString(), 2) +
            padStr(date.getUTCMinutes().toString(), 2) +
            padStr(date.getUTCSeconds().toString(), 2);
-};
+}
 
 /**
  * Left-pad a string to the desired length with zeroes

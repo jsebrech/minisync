@@ -18,7 +18,6 @@
         return Object.prototype.toString.call(v) === "[object Array]";
     }
     exports.isArray = isArray;
-    ;
     /**
      * Return a date string which can be compared using < and >
      * @param {Date} [date]
@@ -35,7 +34,6 @@
             padStr(date.getUTCSeconds().toString(), 2);
     }
     exports.dateToString = dateToString;
-    ;
     /**
      * Left-pad a string to the desired length with zeroes
      * @param arg

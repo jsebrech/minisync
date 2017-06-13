@@ -18,13 +18,13 @@ export class Document extends Syncable {
      * @constructor Document
      */
     constructor(data: ChangesObject | any, restore?: boolean) {
-        if (typeof data !== "object") throw "Argument must be an object";
-        if (isArray(data)) throw "Argument cannot be an array";
-        let isChanges: boolean =
+        if (typeof data !== "object") throw new Error("Argument must be an object");
+        if (isArray(data)) throw new Error("Argument cannot be an array");
+        const isChanges: boolean =
             data && data._minisync && (data._minisync.dataType === "CHANGES");
-        if (isChanges && data.changesSince) throw "change block must be non-delta";
-        let shouldMerge: boolean = isChanges && !restore;
-        let shouldRestore: boolean = isChanges && restore;
+        if (isChanges && data.changesSince) throw new Error("change block must be non-delta");
+        const shouldMerge: boolean = isChanges && !restore;
+        const shouldRestore: boolean = isChanges && restore;
         super();
         this.setDocument(this);
         if (shouldMerge) {
@@ -33,9 +33,8 @@ export class Document extends Syncable {
             this.getDocVersion();
             this.mergeChanges(data);
             // for all client states, mark last confirmed send as current version
-            let clientStates: ClientState[] = this.getClientStates();
-            for (let i: number = 0; i < clientStates.length; i++) {
-                let clientState = clientStates[i];
+            const clientStates: ClientState[] = this.getClientStates();
+            for (const clientState of clientStates) {
                 clientState.lastAcknowledged = this.getDocVersion();
             }
         } else if (shouldRestore) {
@@ -55,7 +54,7 @@ export class Document extends Syncable {
      * @return {string}
      */
     public getClientID(): ClientID {
-        let state: State = this.getState();
+        const state: State = this.getState();
         if (!state.clientID) state.clientID = uid.nextLong();
         return state.clientID;
     }
@@ -85,7 +84,7 @@ export class Document extends Syncable {
      * @return {*} state object = {clientID, lastAcknowledged, lastReceived}
      */
     public getClientState(clientID: ClientID): ClientState {
-        let states: ClientState[] = this.getClientStates();
+        const states: ClientState[] = this.getClientStates();
         let clientData: ClientState;
         for (let i: number = 0; i < states.length; i++) {
             if (states[i].clientID === clientID) {
@@ -110,7 +109,7 @@ export class Document extends Syncable {
      * @returns {Array}
      */
     public getClientStates(): ClientState[] {
-        let state: State = this.getState();
+        const state: State = this.getState();
         if (!state.remote) state.remote = [];
         return state.remote;
     }
@@ -125,10 +124,10 @@ export class Document extends Syncable {
     public getChanges(clientID: ClientID): ChangesObject {
         let changesSince: string = null;
         if (clientID) {
-            let clientState: ClientState = this.getClientState(clientID);
+            const clientState: ClientState = this.getClientState(clientID);
             changesSince = clientState.lastAcknowledged;
         }
-        let changes: AnyWithState = this.getChangesSince(changesSince);
+        const changes: AnyWithState = this.getChangesSince(changesSince);
         return {
             _minisync: {
                 dataType: "CHANGES",
@@ -148,9 +147,9 @@ export class Document extends Syncable {
      * @returns {*} data object to send
      */
     public mergeChanges(data: ChangesObject | any): void {
-        if (<ChangesObject> data) {
+        if (data as ChangesObject) {
             // state of remote client as stored in this copy of the document
-            let clientState: ClientState = this.getClientState(data.sentBy);
+            const clientState: ClientState = this.getClientState(data.sentBy);
             // state of this client as stored in the remote copy of the document
             let remoteState: ClientState = null;
             for (let i: number = 0; i < data.clientStates.length; i++) {
@@ -162,7 +161,7 @@ export class Document extends Syncable {
             if (remoteState && (clientState.lastAcknowledged < remoteState.lastReceived)) {
                 clientState.lastAcknowledged = remoteState.lastReceived;
             }
-            let allWasSent: boolean = clientState.lastAcknowledged === this.getDocVersion();
+            const allWasSent: boolean = clientState.lastAcknowledged === this.getDocVersion();
             // inherited, actual merging of changes
             super.mergeChanges(data.changes, clientState);
             clientState.lastReceived = data.fromVersion;
@@ -170,7 +169,7 @@ export class Document extends Syncable {
             for (let j: number = 0; j < data.clientStates.length; j++) {
                 remoteState = data.clientStates[j];
                 if (remoteState.clientID !== this.getClientID()) {
-                    let localState: ClientState = this.getClientState(remoteState.clientID);
+                    const localState: ClientState = this.getClientState(remoteState.clientID);
                     // update remote version that was last received
                     if (localState.lastReceived < remoteState.lastReceived) {
                         localState.lastReceived = remoteState.lastReceived;
@@ -190,7 +189,7 @@ export class Document extends Syncable {
                 clientState.lastAcknowledged = this.getDocVersion();
             }
         } else {
-            throw "Invalid changes object";
+            throw new Error("Invalid changes object");
         }
     }
 
@@ -215,7 +214,7 @@ export class Document extends Syncable {
      * @param states
      */
     private setClientStates(states: ClientState[]): void {
-        let state: State = this.getState();
+        const state: State = this.getState();
         state.remote = states || [];
     }
 

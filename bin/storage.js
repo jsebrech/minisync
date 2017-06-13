@@ -68,6 +68,22 @@
         return LocalStoragePlugin;
     }());
     exports.LocalStoragePlugin = LocalStoragePlugin;
+    var Storage = (function () {
+        function Storage(
+            /** the namespace inside of which documents are stored */
+            namespace, 
+            /** The storage plugin used for saving local copies of the document */
+            localStore) {
+            if (namespace === void 0) { namespace = "minisync"; }
+            if (localStore === void 0) { localStore = new LocalStoragePlugin(namespace); }
+            this.namespace = namespace;
+            this.localStore = localStore;
+        }
+        return Storage;
+    }());
+    exports.Storage = Storage;
 });
+// TODO: save/restore document from localStore
 // TODO: implement dropbox plugin
+// TODO: publish/subscribe document from remoteStore
 //# sourceMappingURL=storage.js.map

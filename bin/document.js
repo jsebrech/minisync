@@ -40,12 +40,12 @@ var __extends = (this && this.__extends) || (function () {
         function Document(data, restore) {
             var _this = this;
             if (typeof data !== "object")
-                throw "Argument must be an object";
+                throw new Error("Argument must be an object");
             if (types_1.isArray(data))
-                throw "Argument cannot be an array";
+                throw new Error("Argument cannot be an array");
             var isChanges = data && data._minisync && (data._minisync.dataType === "CHANGES");
             if (isChanges && data.changesSince)
-                throw "change block must be non-delta";
+                throw new Error("change block must be non-delta");
             var shouldMerge = isChanges && !restore;
             var shouldRestore = isChanges && restore;
             _this = _super.call(this) || this;
@@ -57,8 +57,8 @@ var __extends = (this && this.__extends) || (function () {
                 _this.mergeChanges(data);
                 // for all client states, mark last confirmed send as current version
                 var clientStates = _this.getClientStates();
-                for (var i = 0; i < clientStates.length; i++) {
-                    var clientState = clientStates[i];
+                for (var _i = 0, clientStates_1 = clientStates; _i < clientStates_1.length; _i++) {
+                    var clientState = clientStates_1[_i];
                     clientState.lastAcknowledged = _this.getDocVersion();
                 }
             }
@@ -212,7 +212,7 @@ var __extends = (this && this.__extends) || (function () {
                 }
             }
             else {
-                throw "Invalid changes object";
+                throw new Error("Invalid changes object");
             }
         };
         /**

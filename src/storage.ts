@@ -73,4 +73,15 @@ export class LocalStoragePlugin implements StoragePlugin {
     }
 }
 
+export class Storage {
+    constructor(
+        /** the namespace inside of which documents are stored */
+        readonly namespace: string = "minisync",
+        /** The storage plugin used for saving local copies of the document */
+        readonly localStore: StoragePlugin = new LocalStoragePlugin(namespace)
+    ) {}
+}
+
+// TODO: save/restore document from localStore
 // TODO: implement dropbox plugin
+// TODO: publish/subscribe document from remoteStore

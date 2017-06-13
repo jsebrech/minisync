@@ -88,10 +88,10 @@ var __extends = (this && this.__extends) || (function () {
          */
         Syncable.prototype.getState = function () {
             if (!this.data)
-                throw "data property not set";
+                throw new Error("data property not set");
             if (!this.data._s) {
                 if (!this.document)
-                    throw "document property not set";
+                    throw new Error("document property not set");
                 var s = {
                     id: uid.next(),
                     u: null,
@@ -563,20 +563,19 @@ var __extends = (this && this.__extends) || (function () {
                         (changes._s.t >= this.getTimeStamp())));
                     var intervals = (function () {
                         var localValue;
-                        var remoteValue;
                         // remote values in between objects that exist on both sides
-                        var intervals = [];
+                        var currentIntervals = [];
                         var interval = [];
                         var lastID = null;
                         var v = changes.v || [];
                         // synchronize the objects that exist on both sides
                         for (var _i = 0, v_1 = v; _i < v_1.length; _i++) {
-                            var remoteValue_1 = v_1[_i];
-                            if (remoteValue_1 && remoteValue_1._s) {
-                                if (localIDs_1[remoteValue_1._s.id] !== undefined) {
-                                    localValue = _this.get(localIDs_1[remoteValue_1._s.id]);
+                            var remoteValue = v_1[_i];
+                            if (remoteValue && remoteValue._s) {
+                                if (localIDs_1[remoteValue._s.id] !== undefined) {
+                                    localValue = _this.get(localIDs_1[remoteValue._s.id]);
                                     if (interval.length) {
-                                        intervals.push({
+                                        currentIntervals.push({
                                             after: lastID,
                                             before: localValue.getID(),
                                             values: interval
@@ -588,15 +587,15 @@ var __extends = (this && this.__extends) || (function () {
                                 }
                             }
                             // primitive value or object not occurring in both, remember for next step
-                            interval.push(remoteValue_1);
+                            interval.push(remoteValue);
                         }
                         if (interval.length)
-                            intervals.push({
+                            currentIntervals.push({
                                 after: lastID,
                                 before: null,
                                 values: interval
                             });
-                        return intervals;
+                        return currentIntervals;
                     })();
                     // synchronize the intervals between the objects that exist on both sides
                     if (otherIsNewer) {
@@ -834,8 +833,7 @@ var __extends = (this && this.__extends) || (function () {
          *        If thisArg is omitted, undefined is used as the this value.
          */
         SyncableArray.prototype.some = function (callbackfn, thisArg) {
-            var data = this.getData();
-            return Array.prototype.some.apply(data, arguments);
+            return Array.prototype.some.apply(this.getData(), arguments);
         };
         /**
          * Calls the specified callback function for all the elements in an array, in descending order.
@@ -847,8 +845,7 @@ var __extends = (this && this.__extends) || (function () {
          * The first call to the callbackfn function provides this value as an argument instead of an array value.
          */
         SyncableArray.prototype.reduceRight = function (callbackfn, initialValue) {
-            var data = this.getData();
-            return Array.prototype.reduceRight.apply(data, arguments);
+            return Array.prototype.reduceRight.apply(this.getData(), arguments);
         };
         /**
          * Calls the specified callback function for all the elements in an array.
@@ -860,8 +857,7 @@ var __extends = (this && this.__extends) || (function () {
          * The first call to the callbackfn function provides this value as an argument instead of an array value.
          */
         SyncableArray.prototype.reduce = function (callbackfn, initialValue) {
-            var data = this.getData();
-            return Array.prototype.reduce.apply(data, arguments);
+            return Array.prototype.reduce.apply(this.getData(), arguments);
         };
         /**
          * Calls a defined callback function on each element of an array,
@@ -872,8 +868,7 @@ var __extends = (this && this.__extends) || (function () {
          * If thisArg is omitted, undefined is used as the this value.
          */
         SyncableArray.prototype.map = function (callbackfn, thisArg) {
-            var data = this.getData();
-            return Array.prototype.map.apply(data, arguments);
+            return Array.prototype.map.apply(this.getData(), arguments);
         };
         /**
          * Adds all the elements of an array separated by the specified separator string.
@@ -881,8 +876,7 @@ var __extends = (this && this.__extends) || (function () {
          * If omitted, the array elements are separated with a comma.
          */
         SyncableArray.prototype.join = function (separator) {
-            var data = this.getData();
-            return Array.prototype.join.apply(data, arguments);
+            return Array.prototype.join.apply(this.getData(), arguments);
         };
         /**
          * Determines whether all the members of an array satisfy the specified test.
@@ -893,8 +887,7 @@ var __extends = (this && this.__extends) || (function () {
          * If thisArg is omitted, undefined is used as the this value.
          */
         SyncableArray.prototype.every = function (callbackfn, thisArg) {
-            var data = this.getData();
-            return Array.prototype.every.apply(data, arguments);
+            return Array.prototype.every.apply(this.getData(), arguments);
         };
         /**
          * Returns a string that contains the concatenation of two or more strings.
@@ -905,8 +898,7 @@ var __extends = (this && this.__extends) || (function () {
             for (var _i = 0; _i < arguments.length; _i++) {
                 strings[_i] = arguments[_i];
             }
-            var data = this.getData();
-            return Array.prototype.concat.apply(data, arguments);
+            return Array.prototype.concat.apply(this.getData(), arguments);
         };
         /**
          * Sorts the elements of an array in place and returns the array
