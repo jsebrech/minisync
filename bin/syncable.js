@@ -1,17 +1,24 @@
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 (function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
     }
-    else if (typeof define === 'function' && define.amd) {
+    else if (typeof define === "function" && define.amd) {
         define(["require", "exports", "./base64", "./types", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     var base64_1 = require("./base64");
     var types_1 = require("./types");
     var uid = require("./uid");
@@ -179,11 +186,13 @@ var __extends = (this && this.__extends) || function (d, b) {
             // foo.bar
             if (keyParts.length) {
                 return this.get(keyParts.join(".")).set(key, value);
+                // foo[2], foo[2][1]
             }
             else if (key.substr(-1) === "]") {
                 var index = key.substr(0, key.length - 1).split("[").pop();
                 key = key.split("[").slice(0, -1).join("[");
                 return this.get(key).set(index, value);
+                // bar, 2
             }
             else if (!this.isRemoved()) {
                 this.data[key] = value;
@@ -352,6 +361,7 @@ var __extends = (this && this.__extends) || function (d, b) {
                         (_this.get(key) !== remoteValue)) {
                         _this.set(key, remoteValue);
                     }
+                    // synchronize child objects
                 }
                 else {
                     var expectType = (remoteValue._s.a) ? [] : {};
@@ -437,16 +447,18 @@ var __extends = (this && this.__extends) || function (d, b) {
          * @constructor
          */
         function SyncableArray(document, data, restore) {
+            var _this = this;
             if (restore) {
                 var arrayObj = data;
-                _super.call(this, document, arrayObj.v, restore);
-                this.data._s = arrayObj._s;
+                _this = _super.call(this, document, arrayObj.v, restore) || this;
+                _this.data._s = arrayObj._s;
             }
             else {
                 if (!types_1.isArray(data))
                     data = [];
-                _super.call(this, document, data, restore);
+                _this = _super.call(this, document, data, restore) || this;
             }
+            return _this;
         }
         /**
          * Overridden getData() for the array subtype
@@ -891,7 +903,7 @@ var __extends = (this && this.__extends) || function (d, b) {
         SyncableArray.prototype.concat = function () {
             var strings = [];
             for (var _i = 0; _i < arguments.length; _i++) {
-                strings[_i - 0] = arguments[_i];
+                strings[_i] = arguments[_i];
             }
             var data = this.getData();
             return Array.prototype.concat.apply(data, arguments);

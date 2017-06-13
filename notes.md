@@ -338,8 +338,7 @@ Types of files:
 - `client-index.json` file: for a client of a specific Document, keeps track of the version 
   as well as where to find the parts files containing the Document's data.
 - `partXXX.json` file(s): the actual document as exported by a specific client, split into chunks
-- `master-index.json` file: for a user, keeps track of all clients of a document, their own and those by others.
-  Points to client index files for each client.
+- `master-index.json` file: for a user, keeps track of all clients of a document, their own and those by others. Points to client index files for each client.
 
 `client-index.json` file contents:
 - `latest`: string = latest version
@@ -350,18 +349,18 @@ Types of files:
 - `part000001`: string = url of part file
 - `part...`: string = url of successive part files
 
-Part file:
+`partXXX.json` file:
 - File name = part + first version in file
 - Contains a range of versions.
 - Only the latest file is written to, and only to append new versions.
 - A new file is started every 500 KB
 
-Master index file:
-- client[client id]:
-  - url: points to index file
-- latestUpdate: 
-  - client: string = client id
-  - version: string = client version that was written
+`master-index.json` file:
+- `client[client id]`:
+  - `url`: points to index file
+- `latestUpdate`: 
+  - `client`: string = client id
+  - `version`: string = client version that was written
 
 *Syncing*
 

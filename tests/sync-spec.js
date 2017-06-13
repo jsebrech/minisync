@@ -1,5 +1,14 @@
 describe("minisync p2p", function() {
 
+    let minisync;
+
+    beforeAll(function(done) {
+        require(['minisync'], function(m) {
+            minisync = m;
+            done();
+        });
+    });
+
     function isArray(v) {
         return Object.prototype.toString.call(v) === '[object Array]';
     }
@@ -190,7 +199,7 @@ describe("minisync p2p", function() {
                     {after: c2.get('a[2]').getID(), before: null, values: [5]}
                 ];
                 var expectedIntervalIndex = 0;
-                spyOn(minisync._private.SyncableArray.prototype, 'mergeInterval').andCallFake(
+                spyOn(minisync._private.SyncableArray.prototype, 'mergeInterval').and.callFake(
                     function(interval) {
                         var expectedInterval = expectedIntervals[expectedIntervalIndex++];
                         compareObjects(interval, expectedInterval);

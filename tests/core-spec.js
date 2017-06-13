@@ -1,5 +1,14 @@
 describe('minisync core', function() {
 
+    let minisync;
+
+    beforeAll(function(done) {
+        require(['minisync'], function(m) {
+            minisync = m;
+            done();
+        });
+    });
+
     function isArray(v) {
         return Object.prototype.toString.call(v) === '[object Array]';
     }

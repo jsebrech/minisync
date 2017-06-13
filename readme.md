@@ -82,7 +82,7 @@ Changing
 
 To build a new version:
 
-     npm install -g typescript # just once
+     npm install -g typescript tslint # just once
      tsc # after every change
 
 Launch tests/testrunner.html to test changes.

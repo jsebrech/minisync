@@ -1,17 +1,24 @@
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 (function (factory) {
-    if (typeof module === 'object' && typeof module.exports === 'object') {
-        var v = factory(require, exports); if (v !== undefined) module.exports = v;
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
     }
-    else if (typeof define === 'function' && define.amd) {
+    else if (typeof define === "function" && define.amd) {
         define(["require", "exports", "./base64", "./syncable", "./types", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     var base64 = require("./base64");
     var syncable_1 = require("./syncable");
     var types_1 = require("./types");
@@ -31,6 +38,7 @@ var __extends = (this && this.__extends) || function (d, b) {
          * @constructor Document
          */
         function Document(data, restore) {
+            var _this = this;
             if (typeof data !== "object")
                 throw "Argument must be an object";
             if (types_1.isArray(data))
@@ -40,31 +48,32 @@ var __extends = (this && this.__extends) || function (d, b) {
                 throw "change block must be non-delta";
             var shouldMerge = isChanges && !restore;
             var shouldRestore = isChanges && restore;
-            _super.call(this);
-            this.setDocument(this);
+            _this = _super.call(this) || this;
+            _this.setDocument(_this);
             if (shouldMerge) {
-                this.setData({});
+                _this.setData({});
                 // ensure an initial state exists
-                this.getDocVersion();
-                this.mergeChanges(data);
+                _this.getDocVersion();
+                _this.mergeChanges(data);
                 // for all client states, mark last confirmed send as current version
-                var clientStates = this.getClientStates();
+                var clientStates = _this.getClientStates();
                 for (var i = 0; i < clientStates.length; i++) {
                     var clientState = clientStates[i];
-                    clientState.lastAcknowledged = this.getDocVersion();
+                    clientState.lastAcknowledged = _this.getDocVersion();
                 }
             }
             else if (shouldRestore) {
-                this.setData(data.changes, true);
-                this.setClientID(data.sentBy);
-                this.setDocVersion(data.fromVersion);
-                this.setClientStates(data.clientStates);
+                _this.setData(data.changes, true);
+                _this.setClientID(data.sentBy);
+                _this.setDocVersion(data.fromVersion);
+                _this.setClientStates(data.clientStates);
             }
             else {
-                this.setData(data);
+                _this.setData(data);
                 // ensure an initial state exists
-                this.getDocVersion();
+                _this.getDocVersion();
             }
+            return _this;
         }
         /**
          * Return the unique client ID of the document on this machine

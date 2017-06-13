@@ -7,14 +7,9 @@
         "sourceMap": true,
         "newLine": "LF",
         "target": "es5",
-        "lib": ["dom", "es5", "scripthost", "es2015.core", "es2015.proxy"]
+        "lib": ["dom", "es5", "scripthost", "es2015.core", "es2015.proxy", "es2015.promise"]
     },
-    "files": [
-        "src/base64.ts",
-        "src/types.ts",
-        "src/uid.ts",
-        "src/syncable.ts",
-        "src/document.ts",
-        "src/minisync.ts"
+    "include": [
+        "src/*.ts"
     ]
 }
