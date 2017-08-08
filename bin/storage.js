@@ -4,11 +4,12 @@
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define(["require", "exports"], factory);
+        define(["require", "exports", "./minisync"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    var minisync_1 = require("./minisync");
     var LocalStoragePlugin = (function () {
         function LocalStoragePlugin(prefix) {
             if (prefix === void 0) { prefix = "minisync"; }
@@ -79,11 +80,40 @@
             this.namespace = namespace;
             this.localStore = localStore;
         }
+        /**
+         * Save a document to local storage
+         * @param document Document to aave
+         * @return The document's ID (to restore from)
+         */
+        Storage.prototype.save = function (document) {
+            return this.localStore.putFile({
+                path: ["documents"],
+                fileName: document.getID(),
+                contents: JSON.stringify(document.getChanges())
+            }).then(function (success) {
+                if (!success)
+                    throw new Error("Unexpected error saving document");
+                return document.getID();
+            });
+        };
+        /**
+         * Restore a document from local storage
+         * @param id The document id to restore
+         * @return The restored document
+         */
+        Storage.prototype.restore = function (id) {
+            return this.localStore.getFile({
+                path: ["documents"],
+                fileName: id
+            }).then(function (data) {
+                return minisync_1.restore(JSON.parse(data.contents));
+            });
+        };
         return Storage;
     }());
     exports.Storage = Storage;
 });
-// TODO: save/restore document from localStore
+// TODO: indexeddb backend
 // TODO: implement dropbox plugin
 // TODO: publish/subscribe document from remoteStore
 //# sourceMappingURL=storage.js.map

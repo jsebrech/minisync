@@ -121,7 +121,7 @@ export class Document extends Syncable {
      * that can be synchronized against any remote client (even if never synced before)
      * @returns {*} data object to send
      */
-    public getChanges(clientID: ClientID): ChangesObject {
+    public getChanges(clientID?: ClientID): ChangesObject {
         let changesSince: string = null;
         if (clientID) {
             const clientState: ClientState = this.getClientState(clientID);
@@ -197,7 +197,7 @@ export class Document extends Syncable {
      * Change the unique client ID of the document on this machine
      * @param {string} id
      */
-    private setClientID(id: Version): void {
+    private setClientID(id: ClientID): void {
         this.getState().clientID = id;
     }
 

@@ -1,3 +1,7 @@
+import {Document} from "./document";
+import {restore} from "./minisync";
+import {ObjectID} from "./types";
+
 interface FileHandle {
     path: string[];
     fileName: string;
@@ -80,8 +84,38 @@ export class Storage {
         /** The storage plugin used for saving local copies of the document */
         readonly localStore: StoragePlugin = new LocalStoragePlugin(namespace)
     ) {}
+
+    /**
+     * Save a document to local storage
+     * @param document Document to aave
+     * @return The document's ID (to restore from)
+     */
+    public save(document: Document): Promise<ObjectID> {
+        return this.localStore.putFile({
+            path: ["documents"],
+            fileName: document.getID(),
+            contents: JSON.stringify(document.getChanges())
+        }).then((success: boolean) => {
+            if (!success) throw new Error("Unexpected error saving document");
+            return document.getID();
+        });
+    }
+
+    /**
+     * Restore a document from local storage
+     * @param id The document id to restore
+     * @return The restored document
+     */
+    public restore(id: ObjectID): Promise<Document> {
+        return this.localStore.getFile({
+            path: ["documents"],
+            fileName: id
+        }).then((data) => {
+            return restore(JSON.parse(data.contents));
+        });
+    }
 }
 
-// TODO: save/restore document from localStore
+// TODO: indexeddb backend
 // TODO: implement dropbox plugin
 // TODO: publish/subscribe document from remoteStore

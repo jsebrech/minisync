@@ -1,10 +1,11 @@
 describe("minisync storage", function() {
 
-    let storage;
+    let storage, minisync;
 
     beforeAll(function(done) {
-        require(['storage'], function(s) {
+        require(['storage', 'minisync'], function(s, m) {
             storage = s;
+            minisync = m;
             done();
         });
     });
@@ -57,6 +58,20 @@ describe("minisync storage", function() {
                 expect(typeof result).toEqual("object");
                 expect(result).toEqual(data);
                 done();
+            });
+        });
+
+        it("should save and restore a document", function(done) {
+            var original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
+            var store = new storage.Storage("test", plugin);
+            store.save(original).then(function (documentID) {
+                return store.restore(documentID);
+            }).then(function(restored) {
+                compareObjects(original.data, restored.data);
+                expect(original.getClientID()).toEqual(restored.getClientID());
+                done();
+            }).catch(function(reason) {
+                fail(reason);
             });
         });
     });

@@ -9,10 +9,6 @@ describe('minisync core', function() {
         });
     });
 
-    function isArray(v) {
-        return Object.prototype.toString.call(v) === '[object Array]';
-    }
-
     describe('uid', function() {
 
         it('should be unique a thousand times', function() {

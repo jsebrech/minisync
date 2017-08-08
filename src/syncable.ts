@@ -105,7 +105,7 @@ export class Syncable {
      * Return the unique id of this object
      * @returns {String}
      */
-    public getID(): string {
+    public getID(): ObjectID {
         return this.getState().id;
     }
 
