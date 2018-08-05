@@ -1,3 +1,4 @@
+// @ts-nocheck
 describe("minisync p2p", function() {
 
     let minisync;
