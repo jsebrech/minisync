@@ -1,0 +1,37 @@
+{
+  "name": "minisync",
+  "version": "0.2.0",
+  "description": "P2P JSON synchronization library",
+  "main": "bin/minisync.js",
+  "bin": {
+    "minisync": "base64.js"
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/chai": "^4.1.4",
+    "@types/mocha": "^5.2.5",
+    "@types/sinon": "^5.0.1",
+    "chai": "^4.1.2",
+    "harmony-reflect": "^1.6.0",
+    "mocha": "^5.2.0",
+    "sinon": "^6.1.5",
+    "ts-node": "^7.0.0",
+    "typescript": "^3.0.1"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec --require ts-node/register \"src/**/*.spec.ts\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jsebrech/minisync.git"
+  },
+  "author": "Joeri Sebrechts",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/jsebrech/minisync/issues"
+  },
+  "homepage": "https://github.com/jsebrech/minisync#readme"
+}

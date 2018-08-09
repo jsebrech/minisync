@@ -14,7 +14,7 @@ import * as uid from "./uid";
  * @param restore For changes objects, if true retores the Document to memory (as the client that exported the changes)
  * @return The minisync Document
  */
-export function from(data: ChangesObject | any, restore?: boolean): Document {
+export function from(data?: ChangesObject | any, restore?: boolean): Document {
     return new Document(data || {}, restore);
 }
 
