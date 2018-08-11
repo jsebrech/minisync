@@ -8,6 +8,15 @@ import { IndexedDBStore, Store } from "./index";
 
 const expect = chai.expect;
 
+// load indexeddb in node environment
+// https://github.com/axemclion/IndexedDBShim
+// tslint:disable-next-line:no-var-requires
+const setGlobalVars = require("indexeddbshim");
+(global as any).window = global;
+setGlobalVars(null, {
+    checkOrigin: false
+});
+
 describe("minisync storage", () => {
 
     describe("IndexedDB", () => {
@@ -24,7 +33,7 @@ describe("minisync storage", () => {
                 db.transaction("files", "readwrite").objectStore("files").clear().onsuccess = () => {
                     done();
                 };
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         function putFile(path: string, file: string, contents: any) {
@@ -47,9 +56,9 @@ describe("minisync storage", () => {
                         expect(result.fileName).to.equal("file");
                         expect(result.contents).to.equal("foo");
                         done();
-                    });
+                    }).catch((e) => done(new Error(e)));
                 };
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         it("should save a file", (done) => {
@@ -61,21 +70,26 @@ describe("minisync storage", () => {
                 expect(result).to.equal(true);
                 store.openDB().then((db) => {
                     const req = db.transaction("files").objectStore("files").get("path/file2");
+                    req.onerror = done;
                     req.onsuccess = (e) => {
-                        expect(e).to.be.an("object");
-                        expect(e.target).to.be.an("object");
-                        const res = (e.target as any).result;
-                        expect(res).to.be.an("object");
-                        expect(res.file).to.be.an("object");
-                        expect(res.path).to.equal("path");
-                        expect(res.name).to.equal("file2");
-                        expect(res.file.path[0]).to.equal("path");
-                        expect(res.file.fileName).to.equal("file2");
-                        expect(res.file.contents).to.equal("bar");
-                        done();
+                        try {
+                            expect(typeof e).to.equal("object");
+                            expect(typeof e.target).to.equal("object");
+                            const res = (e.target as any).result;
+                            expect(typeof res).to.equal("object");
+                            expect(res.file).to.be.an("object");
+                            expect(res.path).to.equal("path");
+                            expect(res.name).to.equal("file2");
+                            expect(res.file.path[0]).to.equal("path");
+                            expect(res.file.fileName).to.equal("file2");
+                            expect(res.file.contents).to.equal("bar");
+                            done();
+                        } catch (err) {
+                            done(err);
+                        }
                     };
                 });
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         it("should load several files", (done) => {
@@ -93,9 +107,9 @@ describe("minisync storage", () => {
                         expect(typeof result).to.equal("object");
                         expect(result).to.deep.equal(data);
                         done();
-                    });
+                    }).catch((e) => done(new Error(e)));
                 };
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         it("should save and restore a document", (done) => {

@@ -6,6 +6,10 @@ import { compareObjects, getData } from "../test-utils";
 import * as storage from "./index";
 import { Store } from "./index";
 
+// load localstorage shim
+// tslint:disable-next-line:no-var-requires
+require("localstorage-polyfill");
+
 const expect = chai.expect;
 
 describe("minisync storage", () => {
@@ -25,13 +29,13 @@ describe("minisync storage", () => {
         it("should load a file", (done) => {
             window.localStorage.setItem("test//path/file", "foo");
             store.getFile({ path: ["path"], fileName: "file"}).then((result) => {
-                expect(result).to.be.an("object");
-                expect(result.path).to.be.an("object");
+                expect(typeof result).to.equal("object");
+                expect(typeof result.path).to.equal("object");
                 expect(result.path[0]).to.equal("path");
                 expect(result.fileName).to.equal("file");
                 expect(result.contents).to.equal("foo");
                 done();
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         it("should save a file", (done) => {
@@ -43,7 +47,7 @@ describe("minisync storage", () => {
                 expect(result).to.equal(true);
                 expect(window.localStorage.getItem("test//path/file2")).to.equal("bar");
                 done();
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         it("should load several files", (done) => {
@@ -55,10 +59,10 @@ describe("minisync storage", () => {
             ];
             store.getFiles(data).then((result) => {
                 data[0].contents = data[1].contents = "foo";
-                expect(result).to.be.an("object");
-                expect(result).to.equal(data);
+                expect(result).to.be.an("array");
+                expect(result).to.deep.equal(data);
                 done();
-            });
+            }).catch((e) => done(new Error(e)));
         });
 
         it("should save and restore a document", (done) => {
@@ -69,9 +73,7 @@ describe("minisync storage", () => {
                 compareObjects(getData(original), getData(restored));
                 expect(original.getClientID()).to.equal(restored.getClientID());
                 done();
-            }).catch((reason) => {
-                done(new Error(reason));
-            });
+            }).catch((e) => done(new Error(e)));
         });
     });
 

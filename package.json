@@ -9,13 +9,15 @@
   "directories": {
     "test": "tests"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.5",
+    "@types/node": "^10.5.8",
     "@types/sinon": "^5.0.1",
     "chai": "^4.1.2",
     "harmony-reflect": "^1.6.0",
+    "indexeddbshim": "^3.8.0",
+    "localstorage-polyfill": "^1.0.1",
     "mocha": "^5.2.0",
     "sinon": "^6.1.5",
     "ts-node": "^7.0.0",
