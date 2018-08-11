@@ -3,12 +3,6 @@
   "version": "0.2.0",
   "description": "P2P JSON synchronization library",
   "main": "bin/minisync.js",
-  "bin": {
-    "minisync": "base64.js"
-  },
-  "directories": {
-    "test": "tests"
-  },
   "devDependencies": {
     "@types/chai": "^4.1.4",
     "@types/mocha": "^5.2.5",
@@ -24,6 +18,7 @@
     "typescript": "^3.0.1"
   },
   "scripts": {
+    "build": "node_modules/.bin/tsc -p .",
     "test": "mocha --reporter spec --require ts-node/register \"src/**/*.spec.ts\""
   },
   "repository": {

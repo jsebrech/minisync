@@ -16,7 +16,6 @@ Usage
 Include src/polyfill.js for old IE versions or environments that lack Array.forEach.
 Drop the file in your scripts folder
 Use [RequireJS](http://requirejs.org/docs/start.html) or CommonJS to load.
-See tests/testrunner.html for an example of how to include.
 
 Client 1: Alice
 

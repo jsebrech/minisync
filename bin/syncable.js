@@ -1,7 +1,10 @@
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -25,7 +28,7 @@ var __extends = (this && this.__extends) || (function () {
     /**
      * JSON object wrapper which tracks changes inside the JSON object
      */
-    var Syncable = (function () {
+    var Syncable = /** @class */ (function () {
         /**
          * Syncable class constructor, wraps one synchronizing object in a document
          * @param document The master document this is linked to
@@ -437,7 +440,7 @@ var __extends = (this && this.__extends) || (function () {
     /**
      * JSON array wrapper which tracks changes inside the JSON array
      */
-    var SyncableArray = (function (_super) {
+    var SyncableArray = /** @class */ (function (_super) {
         __extends(SyncableArray, _super);
         /**
          * Syncable Array class constructor, wraps one synchronizing array in a document

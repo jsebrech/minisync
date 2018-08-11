@@ -9,7 +9,7 @@
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var LocalStorageStore = (function () {
+    var LocalStorageStore = /** @class */ (function () {
         function LocalStorageStore(prefix) {
             if (prefix === void 0) { prefix = "minisync"; }
             this.prefix = prefix;

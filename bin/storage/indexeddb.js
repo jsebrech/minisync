@@ -29,7 +29,7 @@
                 tr.oncomplete = function () { return resolve(result); };
         });
     }
-    var IndexedDBStore = (function () {
+    var IndexedDBStore = /** @class */ (function () {
         /** database with name prefix + "_files" will be used */
         function IndexedDBStore(prefix) {
             if (prefix === void 0) { prefix = "minisync"; }
@@ -45,7 +45,7 @@
                 if (typeof indexedDB !== "undefined")
                     return indexedDB;
             }
-            catch (e) { }
+            catch (e) { /* ignore */ }
             return undefined;
         };
         /**

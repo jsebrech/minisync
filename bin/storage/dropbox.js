@@ -9,7 +9,7 @@
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var DropboxStore = (function () {
+    var DropboxStore = /** @class */ (function () {
         function DropboxStore() {
         }
         // TODO: write me

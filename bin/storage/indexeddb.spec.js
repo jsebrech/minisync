@@ -15,6 +15,14 @@
     var storage = require("./index");
     var index_1 = require("./index");
     var expect = chai.expect;
+    // load indexeddb in node environment
+    // https://github.com/axemclion/IndexedDBShim
+    // tslint:disable-next-line:no-var-requires
+    var setGlobalVars = require("indexeddbshim");
+    global.window = global;
+    setGlobalVars(null, {
+        checkOrigin: false
+    });
     describe("minisync storage", function () {
         describe("IndexedDB", function () {
             var store;
@@ -27,7 +35,7 @@
                     db.transaction("files", "readwrite").objectStore("files").clear().onsuccess = function () {
                         done();
                     };
-                });
+                }).catch(function (e) { return done(new Error(e)); });
             });
             function putFile(path, file, contents) {
                 return store.openDB().then(function (db) {
@@ -48,9 +56,9 @@
                             expect(result.fileName).to.equal("file");
                             expect(result.contents).to.equal("foo");
                             done();
-                        });
+                        }).catch(function (e) { return done(new Error(e)); });
                     };
-                });
+                }).catch(function (e) { return done(new Error(e)); });
             });
             it("should save a file", function (done) {
                 store.putFile({
@@ -61,21 +69,27 @@
                     expect(result).to.equal(true);
                     store.openDB().then(function (db) {
                         var req = db.transaction("files").objectStore("files").get("path/file2");
+                        req.onerror = done;
                         req.onsuccess = function (e) {
-                            expect(e).to.be.an("object");
-                            expect(e.target).to.be.an("object");
-                            var res = e.target.result;
-                            expect(res).to.be.an("object");
-                            expect(res.file).to.be.an("object");
-                            expect(res.path).to.equal("path");
-                            expect(res.name).to.equal("file2");
-                            expect(res.file.path[0]).to.equal("path");
-                            expect(res.file.fileName).to.equal("file2");
-                            expect(res.file.contents).to.equal("bar");
-                            done();
+                            try {
+                                expect(typeof e).to.equal("object");
+                                expect(typeof e.target).to.equal("object");
+                                var res = e.target.result;
+                                expect(typeof res).to.equal("object");
+                                expect(res.file).to.be.an("object");
+                                expect(res.path).to.equal("path");
+                                expect(res.name).to.equal("file2");
+                                expect(res.file.path[0]).to.equal("path");
+                                expect(res.file.fileName).to.equal("file2");
+                                expect(res.file.contents).to.equal("bar");
+                                done();
+                            }
+                            catch (err) {
+                                done(err);
+                            }
                         };
                     });
-                });
+                }).catch(function (e) { return done(new Error(e)); });
             });
             it("should load several files", function (done) {
                 Promise.all([
@@ -92,9 +106,9 @@
                             expect(typeof result).to.equal("object");
                             expect(result).to.deep.equal(data);
                             done();
-                        });
+                        }).catch(function (e) { return done(new Error(e)); });
                     };
-                });
+                }).catch(function (e) { return done(new Error(e)); });
             });
             it("should save and restore a document", function (done) {
                 var original = minisync.from({ v: [1, 2, { foo: "bar" }, 4, 5] });

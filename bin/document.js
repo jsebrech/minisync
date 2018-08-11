@@ -1,7 +1,10 @@
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    }
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -29,7 +32,7 @@ var __extends = (this && this.__extends) || (function () {
      * The Document is composed out of Syncable instances (wrappers around objects or arrays),
      * and primitive values. It can be nested arbitrarily deep, but all Syncables link back to the master Document.
      */
-    var Document = (function (_super) {
+    var Document = /** @class */ (function (_super) {
         __extends(Document, _super);
         /**
          * Document class constructor
@@ -68,7 +71,7 @@ var __extends = (this && this.__extends) || (function () {
                 _this.setDocVersion(data.fromVersion);
                 _this.setClientStates(data.clientStates);
             }
-            else {
+            else { // first init from raw data
                 _this.setData(data);
                 // ensure an initial state exists
                 _this.getDocVersion();
