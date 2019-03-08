@@ -74,14 +74,14 @@
                             try {
                                 expect(typeof e).to.equal("object");
                                 expect(typeof e.target).to.equal("object");
-                                var res = e.target.result;
-                                expect(typeof res).to.equal("object");
-                                expect(res.file).to.be.an("object");
-                                expect(res.path).to.equal("path");
-                                expect(res.name).to.equal("file2");
-                                expect(res.file.path[0]).to.equal("path");
-                                expect(res.file.fileName).to.equal("file2");
-                                expect(res.file.contents).to.equal("bar");
+                                var res_1 = e.target.result;
+                                expect(typeof res_1).to.equal("object");
+                                expect(res_1.file).to.be.an("object");
+                                expect(res_1.path).to.equal("path");
+                                expect(res_1.name).to.equal("file2");
+                                expect(res_1.file.path[0]).to.equal("path");
+                                expect(res_1.file.fileName).to.equal("file2");
+                                expect(res_1.file.contents).to.equal("bar");
                                 done();
                             }
                             catch (err) {

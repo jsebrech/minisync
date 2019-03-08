@@ -1,10 +1,9 @@
 import * as chai from "chai";
-import * as mocha from "mocha";
 
 import * as minisync from "../minisync";
 import { compareObjects, getData } from "../test-utils";
 import * as storage from "./index";
-import { IndexedDBStore, Store } from "./index";
+import { IndexedDBStore } from "./index";
 
 const expect = chai.expect;
 

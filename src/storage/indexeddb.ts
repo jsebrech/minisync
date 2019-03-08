@@ -64,7 +64,7 @@ export class IndexedDBStore implements Store {
 
     private db: IDBDatabase;
 
-    /** database with name prefix + "_files" will be used */
+    /** database with name prefix will be used */
     constructor(readonly prefix: string = "minisync") {
         if (!IndexedDBStore.canUseIDB()) throw new Error("IndexedDB not supported here");
     }

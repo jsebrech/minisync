@@ -31,7 +31,7 @@ export interface Store {
 export function save(document: Document, store: Store): Promise<ObjectID> {
     return store.putFile({
         path: ["documents"],
-        fileName: document.getID(),
+        fileName: document.getID() + ".json",
         contents: JSON.stringify(document.getChanges())
     }).then((success: boolean) => {
         if (!success) throw new Error("Unexpected error saving document");
@@ -48,11 +48,10 @@ export function save(document: Document, store: Store): Promise<ObjectID> {
 export function restore(id: ObjectID, store: Store): Promise<Document> {
     return store.getFile({
         path: ["documents"],
-        fileName: id
+        fileName: id + ".json"
     }).then((data: FileData) => {
         return minisync.restore(JSON.parse(data.contents));
     });
 }
 
-// TODO: implement dropbox plugin
 // TODO: publish/subscribe document from remoteStore

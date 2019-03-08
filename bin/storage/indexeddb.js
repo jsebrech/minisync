@@ -30,7 +30,7 @@
         });
     }
     var IndexedDBStore = /** @class */ (function () {
-        /** database with name prefix + "_files" will be used */
+        /** database with name prefix will be used */
         function IndexedDBStore(prefix) {
             if (prefix === void 0) { prefix = "minisync"; }
             this.prefix = prefix;

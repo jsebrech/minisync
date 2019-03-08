@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "module": "umd",
+        "moduleResolution": "node",
         "noImplicitAny": true,
         "preserveConstEnums": true,
         "outDir": "bin/",
@@ -11,5 +12,9 @@
     },
     "include": [
         "src/**/*.ts"
+    ],
+    "exclude": [
+        "node", 
+        "node_modules"
     ]
 }
