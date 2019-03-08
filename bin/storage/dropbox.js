@@ -54,10 +54,6 @@
                 };
             });
         };
-        DropboxStore.prototype.getFiles = function (files) {
-            var _this = this;
-            return Promise.all(files.map(function (file) { return _this.getFile(file); }));
-        };
         DropboxStore.prototype.listFiles = function (path) {
             var _this = this;
             var handle = function (res, list) {
@@ -79,7 +75,7 @@
          * @param path Array to convert
          */
         DropboxStore.prototype.pathToString = function (path) {
-            return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/^(\/)+/, "/");
+            return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/(\/)+/g, "/");
         };
         return DropboxStore;
     }());

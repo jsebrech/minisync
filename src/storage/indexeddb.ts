@@ -91,10 +91,6 @@ export class IndexedDBStore implements Store {
         });
     }
 
-    public getFiles(files: FileHandle[]): Promise<FileData[]> {
-        return Promise.all(files.map((file) => this.getFile(file)));
-    }
-
     public listFiles(path: string[]): Promise<FileHandle[]> {
         return this.openDB().then((db) => {
             return db.transaction(objectStore1)

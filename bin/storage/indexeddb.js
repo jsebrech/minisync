@@ -89,10 +89,6 @@
                 }, _this.handleToKey(file))).then(function (s) { return true; });
             });
         };
-        IndexedDBStore.prototype.getFiles = function (files) {
-            var _this = this;
-            return Promise.all(files.map(function (file) { return _this.getFile(file); }));
-        };
         IndexedDBStore.prototype.listFiles = function (path) {
             return this.openDB().then(function (db) {
                 return db.transaction(objectStore1)

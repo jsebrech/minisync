@@ -86,25 +86,8 @@
                     });
                 }).catch(function (e) { return done(new Error(e)); });
             });
-            it("should load several files", function (done) {
-                this.timeout(5000);
-                Promise.all([
-                    putFile("path", "file1", "foo"),
-                    putFile("path", "file2", "foo")
-                ]).then(function () {
-                    var data = [
-                        { path: ["path"], fileName: "file1" },
-                        { path: ["path"], fileName: "file2" }
-                    ];
-                    store.getFiles(data).then(function (result) {
-                        data[0].contents = data[1].contents = "foo";
-                        expect(typeof result).to.equal("object");
-                        expect(result).to.deep.equal(data);
-                        done();
-                    }).catch(function (e) { return done(new Error(JSON.stringify(e))); });
-                }).catch(function (e) { return done(new Error(JSON.stringify(e))); });
-            });
             it("should save and restore a document", function (done) {
+                this.timeout(5000);
                 var original = minisync.from({ v: [1, 2, { foo: "bar" }, 4, 5] });
                 storage.save(original, store).then(function (documentID) {
                     return storage.restore(documentID, store);

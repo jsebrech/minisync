@@ -48,20 +48,6 @@
                     done();
                 }).catch(function (e) { return done(new Error(e)); });
             });
-            it("should load several files", function (done) {
-                window.localStorage.setItem("test//path/file1", "foo");
-                window.localStorage.setItem("test//path/file2", "foo");
-                var data = [
-                    { path: ["path"], fileName: "file1" },
-                    { path: ["path"], fileName: "file2" }
-                ];
-                store.getFiles(data).then(function (result) {
-                    data[0].contents = data[1].contents = "foo";
-                    expect(result).to.be.an("array");
-                    expect(result).to.deep.equal(data);
-                    done();
-                }).catch(function (e) { return done(new Error(e)); });
-            });
             it("should save and restore a document", function (done) {
                 var original = minisync.from({ v: [1, 2, { foo: "bar" }, 4, 5] });
                 storage.save(original, store).then(function (documentID) {

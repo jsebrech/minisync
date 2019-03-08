@@ -25,10 +25,6 @@ export class LocalStorageStore implements Store {
         });
     }
 
-    public getFiles(files: FileHandle[]): Promise<FileData[]> {
-        return Promise.all(files.map(this.getFile, this));
-    }
-
     public listFiles(path: string[]): Promise<FileHandle[]> {
         const internalPath = this.prefix + "//" + path.join("/") + "/";
         return Promise.resolve(

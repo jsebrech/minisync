@@ -45,10 +45,6 @@ export class DropboxStore implements Store {
         });
     }
 
-    public getFiles(files: FileHandle[]): Promise<FileData[]> {
-        return Promise.all(files.map((file) => this.getFile(file)));
-    }
-
     public listFiles(path: string[]): Promise<FileHandle[]> {
         const handle = (
             res: DropboxTypes.files.ListFolderResult,
@@ -74,7 +70,7 @@ export class DropboxStore implements Store {
      * @param path Array to convert
      */
     private pathToString(path: string[]) {
-        return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/^(\/)+/, "/");
+        return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/(\/)+/g, "/");
     }
 
 }

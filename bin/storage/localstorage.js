@@ -37,9 +37,6 @@
                 resolve(true);
             });
         };
-        LocalStorageStore.prototype.getFiles = function (files) {
-            return Promise.all(files.map(this.getFile, this));
-        };
         LocalStorageStore.prototype.listFiles = function (path) {
             var internalPath = this.prefix + "//" + path.join("/") + "/";
             return Promise.resolve(this.allKeys().filter(function (key) {

@@ -14,11 +14,16 @@ export interface FileData extends FileHandle {
 
 /**
  * All storage plugins must implement this API.
+ *
+ * It implements a basic async files and folders API
+ * that should be mappable to local and remote storage API's.
  */
 export interface Store {
+    /** Upload a file to a store (privately) */
     putFile(file: FileData): Promise<boolean>;
+    /** Download a file from a store */
     getFile(file: FileHandle): Promise<FileData>;
-    getFiles(files: FileHandle[]): Promise<FileData[]>;
+    /** List the files in a store's folder */
     listFiles(path: string[]): Promise<FileHandle[]>;
 }
 

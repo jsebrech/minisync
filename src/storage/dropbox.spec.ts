@@ -86,26 +86,8 @@ describe("minisync storage", () => {
             }).catch((e) => done(new Error(e)));
         });
 
-        it("should load several files", function(done) {
+        it("should save and restore a document", function(done) {
             this.timeout(5000);
-            Promise.all([
-                putFile("path", "file1", "foo"),
-                putFile("path", "file2", "foo")
-            ]).then(() => {
-                const data = [
-                    {path: ["path"], fileName: "file1"},
-                    {path: ["path"], fileName: "file2"}
-                ];
-                store.getFiles(data).then((result) => {
-                    (data[0] as any).contents = (data[1] as any).contents = "foo";
-                    expect(typeof result).to.equal("object");
-                    expect(result).to.deep.equal(data);
-                    done();
-                }).catch((e) => done(new Error(JSON.stringify(e))));
-            }).catch((e) => done(new Error(JSON.stringify(e))));
-        });
-
-        it("should save and restore a document", (done) => {
             const original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
             storage.save(original, store).then((documentID) => {
                 return storage.restore(documentID, store);
