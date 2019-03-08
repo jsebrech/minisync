@@ -28,6 +28,20 @@ export interface Store {
 }
 
 /**
+ * Storage plugins that are able to share files on the internet
+ * should implement this API instead. Only RemoteStore instances
+ * can be used to share minisync documents with others
+ */
+export interface RemoteStore extends Store {
+    /** Create a public URL for a file */
+    publishFile(file: FileHandle): Promise<string>;
+    /** Detects whether the given URL can be downloaded by this store */
+    canDownloadUrl(url: string): boolean;
+    /** Downloads the given URL and returns the enclosed data */
+    downloadUrl(url: string): Promise<string>;
+}
+
+/**
  * Save a document to a store
  * @param document Document to aave
  * @param store The store to save to

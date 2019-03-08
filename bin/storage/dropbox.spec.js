@@ -99,6 +99,19 @@
                     done(new Error(reason));
                 });
             });
+            it("should publish and download public files", function (done) {
+                this.timeout(5000);
+                putFile("path", "file", "foo").then(function () {
+                    store.publishFile({ path: ["path"], fileName: "file" }).then(function (url) {
+                        expect(typeof url).to.equal("string");
+                        expect(store.canDownloadUrl(url)).to.equal(true);
+                        store.downloadUrl(url).then(function (data) {
+                            expect(data).to.equal("foo");
+                            done();
+                        }).catch(function (e) { return done(new Error(e)); });
+                    }).catch(function (e) { return done(new Error(e)); });
+                }).catch(function (e) { return done(new Error(e)); });
+            });
         });
     });
 });

@@ -1,7 +1,7 @@
 import { Dropbox } from "dropbox";
-import { FileData, FileHandle, Store } from "./core";
+import { FileData, FileHandle, RemoteStore } from "./core";
 
-export class DropboxStore implements Store {
+export class DropboxStore implements RemoteStore {
 
     /**
      * Instantiate a dropbox-backed store
@@ -25,17 +25,8 @@ export class DropboxStore implements Store {
     public getFile(file: FileHandle): Promise<FileData> {
         return this.dropbox.filesDownload({
             path: this.pathToString(file.path) + file.fileName
-        }).then((f: any) => { // DropboxTypes.files.FileMetadata
-            // in node it returns a fileBinary
-            if (f.fileBinary) {
-                return f.fileBinary;
-            // in browser it returns a fileBlob
-            } else if (f.fileBlob) {
-                const responseImpl = this.response || Response;
-                return (new responseImpl((f as any).fileBlob as Blob)).text();
-            } else {
-                throw new Error("no fileBinary or fileBlob in response");
-            }
+        }).then((f: DropboxTypes.files.FileMetadata) => {
+            return this.dataFromFileMeta(f);
         }).then((t: string) => {
             return {
                 path: file.path,
@@ -65,12 +56,51 @@ export class DropboxStore implements Store {
             });
     }
 
+    /** Create a public URL for a file */
+    public publishFile(file: FileHandle): Promise<string> {
+        return this.dropbox.sharingCreateSharedLink({
+            path: this.pathToString(file.path) + file.fileName
+        }).then((meta) => meta.url);
+    }
+
+    /** Detects whether the given URL can be downloaded by this store */
+    public canDownloadUrl(url: string): boolean {
+        return /^https:\/\/www\.dropbox\.com/.test(url);
+    }
+
+    /** Downloads the given URL and returns the enclosed data */
+    public downloadUrl(url: string): Promise<string> {
+        return this.dropbox.sharingGetSharedLinkFile({ url }).then(
+            (res: DropboxTypes.sharing.SharedLinkMetadataReference) => {
+                return this.dataFromFileMeta(res);
+            });
+    }
+
     /**
      * Convert ["some", "path"] to "/<rootFolder>/some/path/"
      * @param path Array to convert
      */
     private pathToString(path: string[]) {
         return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/(\/)+/g, "/");
+    }
+
+    /**
+     * Extract the file contents from a dropbox API response
+     * @param file The file's metadata
+     */
+    private dataFromFileMeta(
+        file: DropboxTypes.files.FileMetadata | DropboxTypes.sharing.SharedFileMetadata | any
+    ): Promise<string> {
+        // in node it returns a fileBinary
+        if (file.fileBinary) {
+            return Promise.resolve(file.fileBinary);
+        // in browser it returns a fileBlob
+        } else if (file.fileBlob) {
+            const responseImpl = this.response || Response;
+            return (new responseImpl((file as any).fileBlob as Blob)).text();
+        } else {
+            return Promise.reject(new Error("no fileBinary or fileBlob in response"));
+        }
     }
 
 }

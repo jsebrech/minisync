@@ -100,6 +100,20 @@ describe("minisync storage", () => {
             });
         });
 
+        it("should publish and download public files", function(done) {
+            this.timeout(5000);
+            putFile("path", "file", "foo").then(() => {
+                store.publishFile({ path: ["path"], fileName: "file"}).then((url) => {
+                    expect(typeof url).to.equal("string");
+                    expect(store.canDownloadUrl(url)).to.equal(true);
+                    store.downloadUrl(url).then((data) => {
+                        expect(data).to.equal("foo");
+                        done();
+                    }).catch((e) => done(new Error(e)));
+                }).catch((e) => done(new Error(e)));
+            }).catch((e) => done(new Error(e)));
+        });
+
     });
 
 });

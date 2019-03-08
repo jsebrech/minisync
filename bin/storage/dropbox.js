@@ -34,18 +34,7 @@
             return this.dropbox.filesDownload({
                 path: this.pathToString(file.path) + file.fileName
             }).then(function (f) {
-                // in node it returns a fileBinary
-                if (f.fileBinary) {
-                    return f.fileBinary;
-                    // in browser it returns a fileBlob
-                }
-                else if (f.fileBlob) {
-                    var responseImpl = _this.response || Response;
-                    return (new responseImpl(f.fileBlob)).text();
-                }
-                else {
-                    throw new Error("no fileBinary or fileBlob in response");
-                }
+                return _this.dataFromFileMeta(f);
             }).then(function (t) {
                 return {
                     path: file.path,
@@ -70,12 +59,47 @@
                 return files.map(function (f) { return ({ path: path, fileName: f.name }); });
             });
         };
+        /** Create a public URL for a file */
+        DropboxStore.prototype.publishFile = function (file) {
+            return this.dropbox.sharingCreateSharedLink({
+                path: this.pathToString(file.path) + file.fileName
+            }).then(function (meta) { return meta.url; });
+        };
+        /** Detects whether the given URL can be downloaded by this store */
+        DropboxStore.prototype.canDownloadUrl = function (url) {
+            return /^https:\/\/www\.dropbox\.com/.test(url);
+        };
+        /** Downloads the given URL and returns the enclosed data */
+        DropboxStore.prototype.downloadUrl = function (url) {
+            var _this = this;
+            return this.dropbox.sharingGetSharedLinkFile({ url: url }).then(function (res) {
+                return _this.dataFromFileMeta(res);
+            });
+        };
         /**
          * Convert ["some", "path"] to "/<rootFolder>/some/path/"
          * @param path Array to convert
          */
         DropboxStore.prototype.pathToString = function (path) {
             return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/(\/)+/g, "/");
+        };
+        /**
+         * Extract the file contents from a dropbox API response
+         * @param file The file's metadata
+         */
+        DropboxStore.prototype.dataFromFileMeta = function (file) {
+            // in node it returns a fileBinary
+            if (file.fileBinary) {
+                return Promise.resolve(file.fileBinary);
+                // in browser it returns a fileBlob
+            }
+            else if (file.fileBlob) {
+                var responseImpl = this.response || Response;
+                return (new responseImpl(file.fileBlob)).text();
+            }
+            else {
+                return Promise.reject(new Error("no fileBinary or fileBlob in response"));
+            }
         };
         return DropboxStore;
     }());
