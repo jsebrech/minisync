@@ -101,7 +101,7 @@ describe("minisync storage", () => {
         });
 
         it("should publish and download public files", function(done) {
-            this.timeout(5000);
+            this.timeout(7000);
             putFile("path", "file", "foo").then(() => {
                 store.publishFile({ path: ["path"], fileName: "file"}).then((url) => {
                     expect(typeof url).to.equal("string");

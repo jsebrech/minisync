@@ -25,7 +25,7 @@
         // then put it in a .env file in the project's root (see .env.example)
         // and remove ".skip" from the test below
         var accessToken = process.env.DROPBOX_ACCESS_TOKEN;
-        describe.skip("Dropbox", function () {
+        describe("Dropbox", function () {
             var store;
             var dbx;
             var testRoot = "minisync_test_dbx";
@@ -100,7 +100,7 @@
                 });
             });
             it("should publish and download public files", function (done) {
-                this.timeout(5000);
+                this.timeout(7000);
                 putFile("path", "file", "foo").then(function () {
                     store.publishFile({ path: ["path"], fileName: "file" }).then(function (url) {
                         expect(typeof url).to.equal("string");
