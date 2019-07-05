@@ -89,8 +89,8 @@
             it("should save and restore a document", function (done) {
                 this.timeout(5000);
                 var original = minisync.from({ v: [1, 2, { foo: "bar" }, 4, 5] });
-                storage.save(original, store).then(function (documentID) {
-                    return storage.restore(documentID, store);
+                storage.saveLocal(original, store).then(function (documentID) {
+                    return storage.restoreLocal(documentID, store);
                 }).then(function (restored) {
                     test_utils_1.compareObjects(test_utils_1.getData(original), test_utils_1.getData(restored));
                     expect(original.getClientID()).to.equal(restored.getClientID());

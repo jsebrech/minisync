@@ -52,8 +52,8 @@ describe("minisync storage", () => {
 
         it("should save and restore a document", (done) => {
             const original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
-            storage.save(original, store).then((documentID) => {
-                return storage.restore(documentID, store);
+            storage.saveLocal(original, store).then((documentID) => {
+                return storage.restoreLocal(documentID, store);
             }).then((restored) => {
                 compareObjects(getData(original), getData(restored));
                 expect(original.getClientID()).to.equal(restored.getClientID());

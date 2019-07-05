@@ -11,12 +11,12 @@
     Object.defineProperty(exports, "__esModule", { value: true });
     var minisync = require("../minisync");
     /**
-     * Save a document to a store
+     * Save a document to a local store
      * @param document Document to aave
      * @param store The store to save to
      * @return The document's ID (to restore from)
      */
-    function save(document, store) {
+    function saveLocal(document, store) {
         return store.putFile({
             path: ["documents"],
             fileName: document.getID() + ".json",
@@ -27,14 +27,14 @@
             return document.getID();
         });
     }
-    exports.save = save;
+    exports.saveLocal = saveLocal;
     /**
-     * Restore a document from local storage
+     * Restore a document from a local store
      * @param id The document id to restore
      * @param store The store to restore from
      * @return The restored document
      */
-    function restore(id, store) {
+    function restoreLocal(id, store) {
         return store.getFile({
             path: ["documents"],
             fileName: id + ".json"
@@ -42,7 +42,7 @@
             return minisync.restore(JSON.parse(data.contents));
         });
     }
-    exports.restore = restore;
+    exports.restoreLocal = restoreLocal;
 });
 // TODO: publish/subscribe document from remoteStore
 //# sourceMappingURL=core.js.map

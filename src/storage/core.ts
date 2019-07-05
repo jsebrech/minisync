@@ -42,12 +42,12 @@ export interface RemoteStore extends Store {
 }
 
 /**
- * Save a document to a store
+ * Save a document to a local store
  * @param document Document to aave
  * @param store The store to save to
  * @return The document's ID (to restore from)
  */
-export function save(document: Document, store: Store): Promise<ObjectID> {
+export function saveLocal(document: Document, store: Store): Promise<ObjectID> {
     return store.putFile({
         path: ["documents"],
         fileName: document.getID() + ".json",
@@ -59,12 +59,12 @@ export function save(document: Document, store: Store): Promise<ObjectID> {
 }
 
 /**
- * Restore a document from local storage
+ * Restore a document from a local store
  * @param id The document id to restore
  * @param store The store to restore from
  * @return The restored document
  */
-export function restore(id: ObjectID, store: Store): Promise<Document> {
+export function restoreLocal(id: ObjectID, store: Store): Promise<Document> {
     return store.getFile({
         path: ["documents"],
         fileName: id + ".json"
