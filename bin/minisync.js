@@ -4,15 +4,12 @@
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define(["require", "exports", "./base64", "./document", "./syncable", "./types", "./uid"], factory);
+        define(["require", "exports", "./document", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var base64 = require("./base64");
     var document_1 = require("./document");
-    var syncable_1 = require("./syncable");
-    var types_1 = require("./types");
     var uid = require("./uid");
     // TODO: P2P communication mechanism (default implementation)
     // Public API
@@ -43,13 +40,5 @@
         return from(data, true);
     }
     exports.restore = restore;
-    // Private API exposed for unit tests only
-    exports._private = {
-        nextVersion: base64.nextVersion,
-        dateToString: types_1.dateToString,
-        createLongID: uid.nextLong,
-        Syncable: syncable_1.Syncable,
-        SyncableArray: syncable_1.SyncableArray
-    };
 });
 //# sourceMappingURL=minisync.js.map

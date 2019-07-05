@@ -88,3 +88,28 @@ export interface ArrayWithState extends Array<any> {
 }
 
 export type AnyValue = AnyWithState | ArrayWithState | any;
+
+/**
+ * JSON object that carries document changes between clients
+ */
+export interface ChangesObject {
+    /** Allows identifying this as a ChangesObject when untyped */
+    _minisync: ChangesObjectVersion;
+    /** Which client sent these changes */
+    sentBy: ClientID;
+    /** The client's version the changes were taken from */
+    fromVersion: Version;
+    /** The state of all peers as known to that client */
+    clientStates: ClientState[];
+    /** The version starting from which changes are reported */
+    changesSince: Version;
+    /** The changes themselves */
+    changes: AnyWithState;
+}
+
+export interface ChangesObjectVersion {
+    /** CHANGES for a changes object */
+    dataType: string;
+    /** CHANGES format version, for future compatibility */
+    version: number;
+}

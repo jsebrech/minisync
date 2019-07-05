@@ -25,7 +25,7 @@
         // then put it in a .env file in the project's root (see .env.example)
         // and remove ".skip" from the test below
         var accessToken = process.env.DROPBOX_ACCESS_TOKEN;
-        describe("Dropbox", function () {
+        describe.skip("Dropbox", function () {
             var store;
             var dbx;
             var testRoot = "minisync_test_dbx";

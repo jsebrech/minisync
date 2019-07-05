@@ -1,7 +1,7 @@
 import * as base64 from "./base64";
-import {ChangesObject, Document} from "./document";
+import {Document} from "./document";
 import {Syncable, SyncableArray} from "./syncable";
-import {ClientID, dateToString} from "./types";
+import {ChangesObject, ClientID, dateToString} from "./types";
 import * as uid from "./uid";
 
 // TODO: P2P communication mechanism (default implementation)
@@ -34,13 +34,3 @@ export function createID(): ClientID {
 export function restore(data: ChangesObject): Document {
   return from(data, true);
 }
-
-// Private API exposed for unit tests only
-
-export let _private = {
-    nextVersion: base64.nextVersion,
-    dateToString,
-    createLongID: uid.nextLong,
-    Syncable,
-    SyncableArray
-};

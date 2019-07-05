@@ -12,7 +12,9 @@
         // don't limit number of classes per file (defaults to 1)
         "max-classes-per-file": [false],
         // allow variable names to start with underscore
-        "variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore"]
+        "variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore"],
+        // don't warn when reusing variable names in an inner scope
+        "no-shadowed-variable": false
     },
     "jsRules": {
         // allow if statements without curly braces

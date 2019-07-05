@@ -81,10 +81,10 @@ Changing
 
 To build a new version:
 
-     npm install -g typescript tslint # just once
-     tsc # after every change
+     npm install
+     npm run build
 
-Launch tests/testrunner.html to test changes.
+Run `npm test` to test changes.
 
 Capabilities
 ------------
@@ -201,3 +201,10 @@ Charlie will send Alice everything he has and Alice will have to
 perform conflict handling based on timestamps because she cannot ignore
 any subset of Charlie's versions. In this case (and only in this case) older data
 may overwrite newer data if Alice or Charlie have an inaccurate clock.
+
+Interchange Format
+------------------
+
+Minisync encodes the changes to send between parties as a JSON structure.
+
+See `ChangesObject` in `types.ts` to see the format of this structure.
