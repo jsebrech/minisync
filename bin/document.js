@@ -46,7 +46,7 @@ var __extends = (this && this.__extends) || (function () {
                 throw new Error("Argument must be an object");
             if (types_1.isArray(data))
                 throw new Error("Argument cannot be an array");
-            var isChanges = data && data._minisync && (data._minisync.dataType === "CHANGES");
+            var isChanges = data && data._minisync && (data._minisync.dataType === "CHANGES" /* Changes */);
             if (isChanges && data.changesSince)
                 throw new Error("change block must be non-delta");
             var shouldMerge = isChanges && !restore;
@@ -158,7 +158,7 @@ var __extends = (this && this.__extends) || (function () {
             var changes = this.getChangesSince(changesSince);
             return {
                 _minisync: {
-                    dataType: "CHANGES",
+                    dataType: "CHANGES" /* Changes */,
                     version: 1
                 },
                 sentBy: this.getClientID(),

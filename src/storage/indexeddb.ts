@@ -1,4 +1,4 @@
-import { FileData, FileHandle, Store } from "./core";
+import { FileData, FileHandle, Store } from "./types";
 
 declare var openDatabase: any;
 

@@ -1,7 +1,5 @@
-import * as base64 from "./base64";
 import {Document} from "./document";
-import {Syncable, SyncableArray} from "./syncable";
-import {ChangesObject, ClientID, dateToString} from "./types";
+import {ChangesObject, ClientID} from "./types";
 import * as uid from "./uid";
 
 // TODO: P2P communication mechanism (default implementation)

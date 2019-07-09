@@ -44,5 +44,4 @@
     }
     exports.restoreLocal = restoreLocal;
 });
-// TODO: publish/subscribe document from remoteStore
 //# sourceMappingURL=core.js.map

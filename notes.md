@@ -125,7 +125,6 @@ In client-index.json keep track of chunk size, start a new chunk when the existi
 Todo
 ----
 
-- rename `save` and `restore`
 - implement `storage.saveRemote` / `storage.restoreRemote`, make it work with a mock storage provider
 - implement `minisync.fromUrl` to start a new local document from a remote minisync document
   - what if it already exists locally? should have a way of obtaining the document id only and checking

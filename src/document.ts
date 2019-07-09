@@ -1,6 +1,6 @@
 import * as base64 from "./base64";
 import {Syncable} from "./syncable";
-import {AnyWithState, ChangesObject, ClientID, ClientState, isArray, State, Version} from "./types";
+import {AnyWithState, ChangesObject, ClientID, ClientState, isArray, ObjectDataType, State, Version} from "./types";
 import * as uid from "./uid";
 
 /**
@@ -21,7 +21,7 @@ export class Document extends Syncable {
         if (typeof data !== "object") throw new Error("Argument must be an object");
         if (isArray(data)) throw new Error("Argument cannot be an array");
         const isChanges: boolean =
-            data && data._minisync && (data._minisync.dataType === "CHANGES");
+            data && data._minisync && (data._minisync.dataType === ObjectDataType.Changes);
         if (isChanges && data.changesSince) throw new Error("change block must be non-delta");
         const shouldMerge: boolean = isChanges && !restore;
         const shouldRestore: boolean = isChanges && restore;
@@ -130,7 +130,7 @@ export class Document extends Syncable {
         const changes: AnyWithState = this.getChangesSince(changesSince);
         return {
             _minisync: {
-                dataType: "CHANGES",
+                dataType: ObjectDataType.Changes,
                 version: 1
             },
             sentBy: this.getClientID(),

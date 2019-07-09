@@ -4,7 +4,7 @@ import * as mocha from "mocha";
 import * as minisync from "../minisync";
 import { compareObjects, getData } from "../test-utils";
 import * as storage from "./index";
-import { Store } from "./index";
+import { Store } from "./types";
 
 // load localstorage shim
 // tslint:disable-next-line:no-var-requires

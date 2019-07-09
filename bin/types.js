@@ -47,5 +47,14 @@
         return str;
     }
     exports.padStr = padStr;
+    var ObjectDataType;
+    (function (ObjectDataType) {
+        // a changes object
+        ObjectDataType["Changes"] = "CHANGES";
+        // a master index in a remote store (index of all clients)
+        ObjectDataType["MasterIndex"] = "MASTER-INDEX";
+        // a client index in a remote store (index of file parts for one client)
+        ObjectDataType["ClientIndex"] = "CLIENT-INDEX";
+    })(ObjectDataType = exports.ObjectDataType || (exports.ObjectDataType = {}));
 });
 //# sourceMappingURL=types.js.map

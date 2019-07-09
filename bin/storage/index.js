@@ -4,7 +4,7 @@
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define(["require", "exports", "./core", "./localstorage", "./indexeddb", "./dropbox"], factory);
+        define(["require", "exports", "./core", "./localstorage", "./indexeddb", "./dropbox", "./memorystore"], factory);
     }
 })(function (require, exports) {
     "use strict";
@@ -16,5 +16,6 @@
     __export(require("./localstorage"));
     __export(require("./indexeddb"));
     __export(require("./dropbox"));
+    __export(require("./memorystore"));
 });
 //# sourceMappingURL=index.js.map

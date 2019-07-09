@@ -1,6 +1,7 @@
 export type Version = string;
 export type ClientID = string;
 export type ObjectID = string;
+export type Timestamp = string;
 export type Proxy = any;
 
 /**
@@ -17,7 +18,7 @@ export function isArray(v: any): boolean {
  * @param {Date} [date]
  * @returns {String}
  */
-export function dateToString(date: Date): string {
+export function dateToString(date: Date): Timestamp {
     if (!(date instanceof Date)) date = new Date();
     return padStr(date.getUTCFullYear().toString(), 4) +
            padStr((date.getUTCMonth() + 1).toString(), 2) +
@@ -58,7 +59,7 @@ export interface State {
     /** version of last update */
     u: Version;
     /** timestamp of last change (iso string) */
-    t: Version;
+    t: Timestamp;
     /** removed in version */
     r?: Version;
     /** true if this is the state for an array */
@@ -107,9 +108,17 @@ export interface ChangesObject {
     changes: AnyWithState;
 }
 
+export const enum ObjectDataType {
+    // a changes object
+    Changes = "CHANGES",
+    // a master index in a remote store (index of all clients)
+    MasterIndex = "MASTER-INDEX",
+    // a client index in a remote store (index of file parts for one client)
+    ClientIndex = "CLIENT-INDEX"
+}
+
 export interface ChangesObjectVersion {
-    /** CHANGES for a changes object */
-    dataType: string;
-    /** CHANGES format version, for future compatibility */
+    dataType: ObjectDataType;
+    /** format version, for future compatibility */
     version: number;
 }
