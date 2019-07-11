@@ -14,6 +14,21 @@
     // remote syncing API
     // 1 MB
     var PART_SIZE_LIMIT = 1024 * 1024;
+    /**
+     * Saves a document to a remote store for the current client
+     * @param document The document to save
+     * @param store The remote store to save to
+     * @param options Additional configuration options
+     *
+     * The remote store is organized like this:
+     * - `documents/`
+     *   - `document-{id}/`: all data for a specific document belonging to this store's user
+     *     - `client-{id}/`; data for a specific client that the user has synced
+     *       - `client-index.json`: index of data parts for this client
+     *       - `part-00000XYZ.json`: a changes file for a particular range of versions uploaded by this client
+     *       - `part-...`
+     *    - `master-index.json`: the index for all the user's clients that have synced to this folder
+     */
     function saveRemote(document, store, options) {
         // what have we stored before?
         return getClientIndex(document.getID(), document.getClientID(), store)
@@ -44,7 +59,7 @@
                 writeToPart.size = dataStr.length;
                 return store.putFile({
                     path: pathFor(document.getID(), document.getClientID()),
-                    fileName: "part-" + types_1.padStr(String(writeToPart.id), 8),
+                    fileName: "part-" + types_1.padStr(String(writeToPart.id), 8) + ".json",
                     contents: dataStr
                 }).then(function (success) {
                     clientIndex.latest = writeToPart.toVersion;

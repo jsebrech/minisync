@@ -73,7 +73,7 @@ describe("minisync storage", () => {
 
             const partFile = await store.getFile({
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
-                fileName: "part-00000000"
+                fileName: "part-00000000.json"
             });
             expect(partFile.contents).to.be.a("string");
             const partData = JSON.parse(partFile.contents);
@@ -100,7 +100,7 @@ describe("minisync storage", () => {
 
             const partFile = await store.getFile({
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
-                fileName: "part-00000000"
+                fileName: "part-00000000.json"
             });
             expect(partFile.contents).to.be.a("string");
             const partData = JSON.parse(partFile.contents);
@@ -133,7 +133,7 @@ describe("minisync storage", () => {
 
             const partFile = await store.getFile({
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
-                fileName: "part-00000001"
+                fileName: "part-00000001.json"
             });
             expect(partFile.contents).to.be.a("string");
             const partData = JSON.parse(partFile.contents);

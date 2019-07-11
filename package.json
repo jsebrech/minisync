@@ -20,13 +20,16 @@
     "indexeddbshim": "^3.8.0",
     "localstorage-polyfill": "^1.0.1",
     "mocha": "^5.2.0",
+    "nyc": "^14.1.1",
     "sinon": "^6.1.5",
+    "source-map-support": "^0.5.12",
     "ts-node": "^7.0.0",
     "typescript": "^3.0.1"
   },
   "scripts": {
     "build": "node_modules/.bin/tsc -p .",
     "test": "mocha --reporter spec --require ts-node/register 'src/**/*.spec.ts'",
+    "test:coverage": "nyc mocha --reporter spec --require ts-node/register --require source-map-support/register --recursive 'src/**/*.spec.ts'",
     "test:watch": "mocha --watch --watch-extensions ts --reporter spec --require ts-node/register 'src/**/*.spec.ts'"
   },
   "repository": {
@@ -38,5 +41,18 @@
   "bugs": {
     "url": "https://github.com/jsebrech/minisync/issues"
   },
-  "homepage": "https://github.com/jsebrech/minisync#readme"
+  "homepage": "https://github.com/jsebrech/minisync#readme",
+  "nyc": {
+    "extension": [
+      ".ts"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      "**/*.js"
+    ],
+    "reporter": [
+      "html"
+    ],
+    "all": true
+  }
 }

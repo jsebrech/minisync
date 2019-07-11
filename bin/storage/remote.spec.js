@@ -121,7 +121,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                             expect(part.size).to.be.above(0);
                             return [4 /*yield*/, store.getFile({
                                     path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
-                                    fileName: "part-00000000"
+                                    fileName: "part-00000000.json"
                                 })];
                         case 4:
                             partFile = _a.sent();
@@ -160,7 +160,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                             expect(clientIndex.parts[0].toVersion).to.equal(document.getDocVersion());
                             return [4 /*yield*/, store.getFile({
                                     path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
-                                    fileName: "part-00000000"
+                                    fileName: "part-00000000.json"
                                 })];
                         case 4:
                             partFile = _a.sent();
@@ -205,7 +205,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
                             expect(clientIndex.parts[1].toVersion).to.equal(secondVersion);
                             return [4 /*yield*/, store.getFile({
                                     path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
-                                    fileName: "part-00000001"
+                                    fileName: "part-00000001.json"
                                 })];
                         case 4:
                             partFile = _a.sent();
