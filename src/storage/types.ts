@@ -25,7 +25,7 @@ export interface FileData extends FileHandle {
 export interface Store {
     /** Upload a file to a store (privately) */
     putFile(file: FileData): Promise<boolean>;
-    /** Download a file from a store */
+    /** Download a file from a store, returns null if no such file exists */
     getFile(file: FileHandle): Promise<FileData>;
     /** List the files in a store's folder */
     listFiles(path: string[]): Promise<FileHandle[]>;
@@ -82,8 +82,6 @@ export interface MasterIndex {
 export interface ClientIndex {
     /** file format identifier */
     _minisync: ChangesObjectVersion;
-    /** url of the enclosing master index */
-    masterUrl: string;
     /** version that was last saved for this client */
     latest: Version;
     /** timestamp that the last save occurred (ISO) */
@@ -99,6 +97,12 @@ export interface ClientIndex {
 export interface ClientIndexPart {
     /** unique identifier of the part, in ascending order */
     id: number;
+    /* contains the data starting from this version */
+    fromVersion: Version;
+    /* ends at this version */
+    toVersion: Version;
     /** url for remote download of the part */
     url: string;
+    /** size in bytes (indicative) */
+    size: number;
 }

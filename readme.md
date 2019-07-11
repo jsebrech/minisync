@@ -42,7 +42,7 @@ Client 1: Alice
     // make a change
     data.set('foo.bar', []);
     // get a changes object for bob (delta containing only changes new to bob)
-    var delta = data.getChanges('bob');
+    var delta = data.getChangesForClient('bob');
     // send changes object to bob
     ...
 
@@ -56,7 +56,7 @@ Client 2: Bob
     // make a change
     data.get('foo.bar').push('foo you too');
     // make delta object for alice
-    var delta = data.getChanges('alice');
+    var delta = data.getChangesForClient('alice');
     
     ... later ...
     

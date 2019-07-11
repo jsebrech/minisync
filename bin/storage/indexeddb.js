@@ -74,7 +74,7 @@
             return this.openDB().then(function (db) {
                 return request2promise(db.transaction(objectStore1)
                     .objectStore(objectStore1)
-                    .get(_this.handleToKey(file))).then(function (s) { return s.file; });
+                    .get(_this.handleToKey(file))).then(function (s) { return s ? s.file : null; } /* not found */);
             });
         };
         IndexedDBStore.prototype.putFile = function (file) {

@@ -26,7 +26,8 @@
   },
   "scripts": {
     "build": "node_modules/.bin/tsc -p .",
-    "test": "mocha --reporter spec --require ts-node/register \"src/**/*.spec.ts\""
+    "test": "mocha --reporter spec --require ts-node/register 'src/**/*.spec.ts'",
+    "test:watch": "mocha --watch --watch-extensions ts --reporter spec --require ts-node/register 'src/**/*.spec.ts'"
   },
   "repository": {
     "type": "git",

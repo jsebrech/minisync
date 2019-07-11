@@ -7,7 +7,7 @@ export class LocalStorageStore implements Store {
         return new Promise((resolve, reject) => {
             const stored = window.localStorage.getItem(this.prefix + "//" + this.encode(file));
             if (stored === null) {
-                reject(new Error("No such file: " + this.encode(file)));
+                resolve(null);
             } else {
                 resolve({
                     path: file.path,

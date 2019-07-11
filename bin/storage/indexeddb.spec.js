@@ -60,6 +60,12 @@
                     };
                 }).catch(function (e) { return done(new Error(e)); });
             });
+            it("should provide an error when loading an non-existent file", function (done) {
+                store.getFile({ path: ["no-such-path"], fileName: "no-such-file" }).then(function (result) {
+                    expect(result).to.be.a("null");
+                    done();
+                }).catch(function (e) { return done(e instanceof Error ? e : new Error(JSON.stringify(e))); });
+            });
             it("should save a file", function (done) {
                 store.putFile({
                     path: ["path"],

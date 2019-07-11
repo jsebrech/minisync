@@ -74,7 +74,7 @@ export class IndexedDBStore implements Store {
             return request2promise(db.transaction(objectStore1)
                 .objectStore(objectStore1)
                 .get(this.handleToKey(file))
-            ).then((s: IndexedDBFileWrapper) => s.file);
+            ).then((s: IndexedDBFileWrapper) => s ? s.file : null /* not found */);
         });
     }
 

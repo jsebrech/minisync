@@ -19,7 +19,7 @@
             return new Promise(function (resolve, reject) {
                 var stored = window.localStorage.getItem(_this.prefix + "//" + _this.encode(file));
                 if (stored === null) {
-                    reject(new Error("No such file: " + _this.encode(file)));
+                    resolve(null);
                 }
                 else {
                     resolve({

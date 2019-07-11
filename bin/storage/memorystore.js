@@ -22,8 +22,9 @@
             var _this = this;
             return new Promise(function (resolve, reject) {
                 var stored = _this.valueAtPath([].concat(file.path, [file.fileName]));
-                if (stored === null) {
-                    reject(new Error("No such file: " + JSON.stringify(file)));
+                if ((stored === null) || (stored === undefined)) {
+                    // not found
+                    resolve(null);
                 }
                 else {
                     resolve({
@@ -78,7 +79,11 @@
             var result = this.files;
             for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
                 var part = path_1[_i];
-                result = result[part];
+                if (result) {
+                    result = result[part];
+                }
+                else
+                    return null;
             }
             return result;
         };

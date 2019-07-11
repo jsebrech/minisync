@@ -41,6 +41,13 @@
                     fileName: file.fileName,
                     contents: t
                 };
+            }).catch(function (err) {
+                // not found
+                if (err && err.status === 409) {
+                    return null;
+                }
+                else
+                    throw err;
             });
         };
         DropboxStore.prototype.listFiles = function (path) {

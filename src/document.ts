@@ -60,7 +60,7 @@ export class Document extends Syncable {
     }
 
     /**
-     * Return the master version for this document
+     * Return the master version for this document (on this client)
      * @returns {string}
      */
     public getDocVersion(): Version {
@@ -75,7 +75,7 @@ export class Document extends Syncable {
      */
     public nextDocVersion(): Version {
         return this.getState().v =
-            base64.nextVersion(this.getState().v, 6);
+            base64.nextVersion(this.getState().v, 10);
     }
 
     /**
@@ -85,13 +85,7 @@ export class Document extends Syncable {
      */
     public getClientState(clientID: ClientID): ClientState {
         const states: ClientState[] = this.getClientStates();
-        let clientData: ClientState;
-        for (let i: number = 0; i < states.length; i++) {
-            if (states[i].clientID === clientID) {
-                clientData = states[i];
-                break;
-            }
-        }
+        let clientData: ClientState = states.find((s) => s.clientID === clientID);
         if (!clientData) states.push(clientData = {
             clientID,
             // local version last confirmed as received remotely
@@ -121,13 +115,23 @@ export class Document extends Syncable {
      * that can be synchronized against any remote client (even if never synced before)
      * @returns {*} data object to send
      */
-    public getChanges(clientID?: ClientID): ChangesObject {
+    public getChangesForClient(clientID: ClientID): ChangesObject {
         let changesSince: string = null;
         if (clientID) {
             const clientState: ClientState = this.getClientState(clientID);
             changesSince = clientState.lastAcknowledged;
         }
-        const changes: AnyWithState = this.getChangesSince(changesSince);
+        return this.getChanges(changesSince);
+    }
+
+    /**
+     * Get updates to send to a remote client
+     * @param {String} [fromVersion] The version to generate a changes object from (for delta updates).
+     * Leave empty to generate a universal state object containing the whole document
+     * that can be synchronized against any remote client (even if never synced before)
+     * @returns {*} data object to send
+     */
+    public getChanges(fromVersion: Version = null): ChangesObject {
         return {
             _minisync: {
                 dataType: ObjectDataType.Changes,
@@ -136,8 +140,8 @@ export class Document extends Syncable {
             sentBy: this.getClientID(),
             fromVersion: this.getDocVersion(),
             clientStates: this.getClientStates(),
-            changesSince,
-            changes
+            changesSince: fromVersion,
+            changes: this.getChangesSince(fromVersion)
         };
     }
 
@@ -152,9 +156,9 @@ export class Document extends Syncable {
             const clientState: ClientState = this.getClientState(data.sentBy);
             // state of this client as stored in the remote copy of the document
             let remoteState: ClientState = null;
-            for (let i: number = 0; i < data.clientStates.length; i++) {
-                if (data.clientStates[i].clientID === this.getClientID()) {
-                    remoteState = data.clientStates[i];
+            for (const clientState of data.clientStates) {
+                if (clientState.clientID === this.getClientID()) {
+                    remoteState = clientState;
                     break;
                 }
             }
@@ -166,8 +170,7 @@ export class Document extends Syncable {
             super.mergeChanges(data.changes, clientState);
             clientState.lastReceived = data.fromVersion;
 
-            for (let j: number = 0; j < data.clientStates.length; j++) {
-                remoteState = data.clientStates[j];
+            for (remoteState of data.clientStates) {
                 if (remoteState.clientID !== this.getClientID()) {
                     const localState: ClientState = this.getClientState(remoteState.clientID);
                     // update remote version that was last received

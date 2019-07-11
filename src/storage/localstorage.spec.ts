@@ -38,6 +38,13 @@ describe("minisync storage", () => {
             }).catch((e) => done(new Error(e)));
         });
 
+        it("should provide an error when loading an non-existent file", (done) => {
+            store.getFile({ path: ["no-such-path"], fileName: "no-such-file"}).then((result) => {
+                expect(result).to.be.a("null");
+                done();
+            }).catch((e) => done(e instanceof Error ? e : new Error(JSON.stringify(e))));
+        });
+
         it("should save a file", (done) => {
             store.putFile({
                 path: ["path"],

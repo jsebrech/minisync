@@ -11,8 +11,9 @@ export class MemoryStore implements RemoteStore {
     public getFile(file: FileHandle): Promise<FileData> {
         return new Promise((resolve, reject) => {
             const stored = this.valueAtPath([].concat(file.path, [file.fileName]));
-            if (stored === null) {
-                reject(new Error("No such file: " + JSON.stringify(file)));
+            if ((stored === null) || (stored === undefined)) {
+                // not found
+                resolve(null);
             } else {
                 resolve({
                     path: file.path,
@@ -68,7 +69,9 @@ export class MemoryStore implements RemoteStore {
     private valueAtPath(path: string[]): any {
         let result = this.files;
         for (const part of path) {
-            result = result[part];
+            if (result) {
+                result = result[part];
+            } else return null;
         }
         return result;
     }

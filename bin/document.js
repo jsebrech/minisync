@@ -89,7 +89,7 @@ var __extends = (this && this.__extends) || (function () {
             return state.clientID;
         };
         /**
-         * Return the master version for this document
+         * Return the master version for this document (on this client)
          * @returns {string}
          */
         Document.prototype.getDocVersion = function () {
@@ -104,7 +104,7 @@ var __extends = (this && this.__extends) || (function () {
          */
         Document.prototype.nextDocVersion = function () {
             return this.getState().v =
-                base64.nextVersion(this.getState().v, 6);
+                base64.nextVersion(this.getState().v, 10);
         };
         /**
          * Get the state object for a remote client
@@ -113,13 +113,7 @@ var __extends = (this && this.__extends) || (function () {
          */
         Document.prototype.getClientState = function (clientID) {
             var states = this.getClientStates();
-            var clientData;
-            for (var i = 0; i < states.length; i++) {
-                if (states[i].clientID === clientID) {
-                    clientData = states[i];
-                    break;
-                }
-            }
+            var clientData = states.find(function (s) { return s.clientID === clientID; });
             if (!clientData)
                 states.push(clientData = {
                     clientID: clientID,
@@ -149,13 +143,23 @@ var __extends = (this && this.__extends) || (function () {
          * that can be synchronized against any remote client (even if never synced before)
          * @returns {*} data object to send
          */
-        Document.prototype.getChanges = function (clientID) {
+        Document.prototype.getChangesForClient = function (clientID) {
             var changesSince = null;
             if (clientID) {
                 var clientState = this.getClientState(clientID);
                 changesSince = clientState.lastAcknowledged;
             }
-            var changes = this.getChangesSince(changesSince);
+            return this.getChanges(changesSince);
+        };
+        /**
+         * Get updates to send to a remote client
+         * @param {String} [fromVersion] The version to generate a changes object from (for delta updates).
+         * Leave empty to generate a universal state object containing the whole document
+         * that can be synchronized against any remote client (even if never synced before)
+         * @returns {*} data object to send
+         */
+        Document.prototype.getChanges = function (fromVersion) {
+            if (fromVersion === void 0) { fromVersion = null; }
             return {
                 _minisync: {
                     dataType: "CHANGES" /* Changes */,
@@ -164,8 +168,8 @@ var __extends = (this && this.__extends) || (function () {
                 sentBy: this.getClientID(),
                 fromVersion: this.getDocVersion(),
                 clientStates: this.getClientStates(),
-                changesSince: changesSince,
-                changes: changes
+                changesSince: fromVersion,
+                changes: this.getChangesSince(fromVersion)
             };
         };
         /**
@@ -179,9 +183,10 @@ var __extends = (this && this.__extends) || (function () {
                 var clientState = this.getClientState(data.sentBy);
                 // state of this client as stored in the remote copy of the document
                 var remoteState = null;
-                for (var i = 0; i < data.clientStates.length; i++) {
-                    if (data.clientStates[i].clientID === this.getClientID()) {
-                        remoteState = data.clientStates[i];
+                for (var _i = 0, _a = data.clientStates; _i < _a.length; _i++) {
+                    var clientState_1 = _a[_i];
+                    if (clientState_1.clientID === this.getClientID()) {
+                        remoteState = clientState_1;
                         break;
                     }
                 }
@@ -192,8 +197,8 @@ var __extends = (this && this.__extends) || (function () {
                 // inherited, actual merging of changes
                 _super.prototype.mergeChanges.call(this, data.changes, clientState);
                 clientState.lastReceived = data.fromVersion;
-                for (var j = 0; j < data.clientStates.length; j++) {
-                    remoteState = data.clientStates[j];
+                for (var _b = 0, _c = data.clientStates; _b < _c.length; _b++) {
+                    remoteState = _c[_b];
                     if (remoteState.clientID !== this.getClientID()) {
                         var localState = this.getClientState(remoteState.clientID);
                         // update remote version that was last received

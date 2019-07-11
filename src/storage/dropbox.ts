@@ -33,6 +33,11 @@ export class DropboxStore implements RemoteStore {
                 fileName: file.fileName,
                 contents: t
             };
+        }).catch((err) => {
+            // not found
+            if (err && err.status === 409) {
+                return null;
+            } else throw err;
         });
     }
 

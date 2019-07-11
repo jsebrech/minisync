@@ -29,14 +29,14 @@
             });
             it("should obtain changes", function () {
                 var o = minisync.from({ foo: "bar" });
-                var changes = o.getChanges("client1");
+                var changes = o.getChangesForClient("client1");
                 expect(changes).not.to.be.a("null");
                 expect(changes.sentBy).to.equal(o.getClientID());
                 expect(changes.fromVersion).to.equal(o.getDocVersion());
                 expect(changes.changes).not.to.be.a("null");
                 expect(changes.changes.foo).to.equal("bar");
                 o.set("foo", "baz");
-                changes = o.getChanges("client1");
+                changes = o.getChangesForClient("client1");
                 expect(changes).not.to.be.a("null");
                 expect(changes.sentBy).to.equal(o.getClientID());
                 expect(changes.fromVersion).to.equal(o.getDocVersion());
@@ -52,21 +52,21 @@
                 // initial sync
                 var client1 = minisync.from({ foo: 1, bar: 1 });
                 var client2 = minisync.from();
-                client2.mergeChanges(client1.getChanges(client2.getClientID()));
+                client2.mergeChanges(client1.getChangesForClient(client2.getClientID()));
                 test_utils_1.compareObjects(test_utils_1.getData(client1), test_utils_1.getData(client2));
                 // replacing non-object value with object value
                 client2.set("bar", { baz: "test" });
-                client1.mergeChanges(client2.getChanges(client1.getClientID()));
+                client1.mergeChanges(client2.getChangesForClient(client1.getClientID()));
                 test_utils_1.compareObjects(test_utils_1.getData(client1), test_utils_1.getData(client2));
                 // updating only a nested property
                 client2.get("bar").set("baz", "changed");
-                client1.mergeChanges(client2.getChanges(client1.getClientID()));
+                client1.mergeChanges(client2.getChangesForClient(client1.getClientID()));
                 test_utils_1.compareObjects(test_utils_1.getData(client2), test_utils_1.getData(client1));
                 // one more sync to make client2 realize client1 got all the updates
-                client2.mergeChanges(client1.getChanges(client2.getClientID()));
+                client2.mergeChanges(client1.getChangesForClient(client2.getClientID()));
                 test_utils_1.compareObjects(test_utils_1.getData(client1), test_utils_1.getData(client2));
-                expect(client1.getChanges(client2.getClientID()).changes).to.be.a("null");
-                expect(client2.getChanges(client1.getClientID()).changes).to.be.a("null");
+                expect(client1.getChangesForClient(client2.getClientID()).changes).to.be.a("null");
+                expect(client2.getChangesForClient(client1.getClientID()).changes).to.be.a("null");
             });
             it("should merge changes without knowing client id", function () {
                 // initial sync
@@ -94,9 +94,9 @@
                 var client2 = minisync.from(client1.getChanges());
                 var client3 = minisync.from(client2.getChanges());
                 test_utils_1.compareObjects(test_utils_1.getData(client1), test_utils_1.getData(client3));
-                expect(client3.getChanges(client1.getClientID()).changes).to.be.a("null");
+                expect(client3.getChangesForClient(client1.getClientID()).changes).to.be.a("null");
                 client3.set("foo", 2);
-                client1.mergeChanges(client3.getChanges(client1.getClientID()));
+                client1.mergeChanges(client3.getChangesForClient(client1.getClientID()));
                 test_utils_1.compareObjects(test_utils_1.getData(client1), test_utils_1.getData(client3));
             });
             it("should merge removed objects", function () {
@@ -123,7 +123,7 @@
                 // make a change
                 bob.get("foo.bar").push("foo you too");
                 // make delta object for alice
-                var bobsdelta = JSON.stringify(bob.getChanges("alice"));
+                var bobsdelta = JSON.stringify(bob.getChangesForClient("alice"));
                 alice = minisync.restore(changes);
                 // receive changes from bob
                 alice.mergeChanges(JSON.parse(bobsdelta));
@@ -132,7 +132,7 @@
                 // make a change
                 alice.set("foo.bar", []);
                 // get a changes object for bob (delta containing only changes new to bob)
-                var alicesdelta = JSON.stringify(alice.getChanges("bob"));
+                var alicesdelta = JSON.stringify(alice.getChangesForClient("bob"));
                 // merge delta changes from alice
                 bob.mergeChanges(JSON.parse(alicesdelta));
                 // should be identical again
@@ -254,7 +254,7 @@
                     ]
                 });
                 // create a remote client state
-                o1.getChanges("alice");
+                o1.getChangesForClient("alice");
                 var s = JSON.parse(JSON.stringify(o1.getChanges()));
                 var o2 = minisync.restore(s);
                 // o1 and o2 should be identical
