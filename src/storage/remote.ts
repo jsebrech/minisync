@@ -2,8 +2,6 @@ import { Document } from "../document";
 import { ClientID, dateToString, ObjectDataType, ObjectID, padStr } from "../types";
 import { ClientIndex, FileData, FileHandle, MasterIndex, RemoteStore } from "./types";
 
-// TODO: publish/subscribe document from remoteStore
-
 // remote syncing API
 
 // 1 MB
@@ -79,6 +77,7 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
 }
 
 export function restoreRemote(documentID: ObjectID, store: RemoteStore): Promise<Document> {
+    // TODO: implement restoreRemote
     return null;
 }
 

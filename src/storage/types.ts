@@ -21,6 +21,9 @@ export interface FileData extends FileHandle {
  *
  * It implements a basic async files and folders API
  * that should be mappable to local and remote storage API's.
+ *
+ * Stores that only implement this API can be used only for saving data private to an individual client,
+ * and cannot be used to share data between clients.
  */
 export interface Store {
     /** Upload a file to a store (privately) */
@@ -34,7 +37,8 @@ export interface Store {
 /**
  * Storage plugins that are able to share files on the internet
  * should implement this API instead. Only RemoteStore instances
- * can be used to share minisync documents with others
+ * can be used to share minisync documents between clients of the same user,
+ * and with clients of other users.
  */
 export interface RemoteStore extends Store {
     /** Create a public URL for a file */

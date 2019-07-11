@@ -10,7 +10,6 @@
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var types_1 = require("../types");
-    // TODO: publish/subscribe document from remoteStore
     // remote syncing API
     // 1 MB
     var PART_SIZE_LIMIT = 1024 * 1024;
@@ -79,6 +78,7 @@
     }
     exports.saveRemote = saveRemote;
     function restoreRemote(documentID, store) {
+        // TODO: implement restoreRemote
         return null;
     }
     exports.restoreRemote = restoreRemote;
