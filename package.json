@@ -19,7 +19,7 @@
     "harmony-reflect": "^1.6.0",
     "indexeddbshim": "^3.8.0",
     "localstorage-polyfill": "^1.0.1",
-    "mocha": "^5.2.0",
+    "mocha": "^6.0.0",
     "nyc": "^14.1.1",
     "sinon": "^6.1.5",
     "source-map-support": "^0.5.12",
@@ -28,9 +28,9 @@
   },
   "scripts": {
     "build": "node_modules/.bin/tsc -p .",
-    "test": "mocha --reporter spec --require ts-node/register 'src/**/*.spec.ts'",
-    "test:coverage": "nyc mocha --reporter spec --require ts-node/register --require source-map-support/register --recursive 'src/**/*.spec.ts'",
-    "test:watch": "mocha --watch --watch-extensions ts --reporter spec --require ts-node/register 'src/**/*.spec.ts'"
+    "test": "mocha \"src/**/*.spec.ts\"",
+    "test:coverage": "nyc mocha --recursive \"src/**/*.spec.ts\"",
+    "test:watch": "mocha --watch --watch-extensions ts \"src/**/*.spec.ts\""
   },
   "repository": {
     "type": "git",

@@ -18,10 +18,13 @@ export class LocalStorageStore implements Store {
         });
     }
 
-    public putFile(file: FileData): Promise<boolean> {
+    public putFile(file: FileData): Promise<FileHandle> {
         return new Promise((resolve, reject) => {
             window.localStorage.setItem(this.prefix + "//" + this.encode(file), file.contents);
-            resolve(true);
+            resolve({
+                path: file.path,
+                fileName: file.fileName
+            });
         });
     }
 

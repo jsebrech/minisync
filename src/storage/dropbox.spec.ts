@@ -28,7 +28,7 @@ describe("minisync storage", () => {
         const testRoot = "minisync_test_dbx";
 
         before(function() {
-            this.timeout(5000);
+            this.timeout(10000);
             dbx = new Dropbox({ accessToken, fetch });
             store = new DropboxStore(dbx, testRoot, Response);
             return dbx.filesGetMetadata({ path: "/" + testRoot }).then(() => {
@@ -72,7 +72,7 @@ describe("minisync storage", () => {
                 fileName: "file2",
                 contents: "bar"
             }).then((result) => {
-                expect(result).to.equal(true);
+                expect(result).to.be.an("object");
                 // download file and check contents
                 dbx.filesDownload({
                     path: "/" + testRoot + "/path/file2"

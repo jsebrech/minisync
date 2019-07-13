@@ -78,7 +78,7 @@ export class IndexedDBStore implements Store {
         });
     }
 
-    public putFile(file: FileData): Promise<boolean> {
+    public putFile(file: FileData): Promise<FileHandle> {
         return this.openDB().then((db) => {
             return request2promise(db.transaction(objectStore1, "readwrite")
                 .objectStore(objectStore1)
@@ -87,7 +87,10 @@ export class IndexedDBStore implements Store {
                     path: file.path.join("/"),
                     file
                 }, this.handleToKey(file))
-            ).then((s: any) => true);
+            ).then((s: any) => ({
+                path: file.path,
+                fileName: file.fileName
+            }));
         });
     }
 

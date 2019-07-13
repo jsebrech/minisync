@@ -38,7 +38,8 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
             if (!clientIndex) {
                 clientIndex = newClientIndex(document.getClientID(), options.clientName);
             }
-            // determine part to write to (append latest or start new)
+            // determine the part file to write to (append latest or start new)
+            // the document is chunked across multiple files to keep files reasonably sized for network transfer
             let writeToPart = clientIndex.parts.slice().pop();
             if (writeToPart.size > (options.partSizeLimit || PART_SIZE_LIMIT)) {
                 writeToPart = {
@@ -50,7 +51,7 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
                 };
                 clientIndex.parts.push(writeToPart);
             }
-            // write changes to part file, if necessary
+            // write changes to the part file, if necessary (version is newer than part file)
             if (!writeToPart.fromVersion || (document.getDocVersion() > writeToPart.toVersion)) {
                 writeToPart.toVersion = document.getDocVersion();
                 const data = document.getChanges(writeToPart.fromVersion);
@@ -60,7 +61,11 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
                     path: pathFor(document.getID(), document.getClientID()),
                     fileName: "part-" + padStr(String(writeToPart.id), 8) + ".json",
                     contents: dataStr
-                }).then((success) => {
+                }).then(
+                    (handle) => store.publishFile(handle)
+                ).then((publishedUrl) => {
+                    writeToPart.url = publishedUrl;
+                    // update the client index and master index
                     clientIndex.latest = writeToPart.toVersion;
                     clientIndex.updated = dateToString(new Date());
                     if (options.clientName) clientIndex.clientName = options.clientName;
@@ -69,16 +74,63 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
                         fileName: "client-index.json",
                         contents: JSON.stringify(clientIndex)
                     }).then(
-                        () => updateMasterIndex(document, clientIndex, store)
-                     ).then(() => clientIndex);
+                        (handle) => store.publishFile(handle)
+                    ).then(
+                        (url) => updateMasterIndex(document, clientIndex, url, store)
+                    ).then(() => clientIndex);
                 });
             } else return clientIndex;
         });
 }
 
-export function restoreRemote(documentID: ObjectID, store: RemoteStore): Promise<Document> {
-    // TODO: implement restoreRemote
-    return null;
+/**
+ * Create a document by restoring it from the latest version in a store
+ * @param documentID The document's ID
+ * @param store The remote store to fetch it from
+ */
+export function createFromRemote(documentID: Document, store: RemoteStore): Promise<Document> {
+    // TODO: implement createFromRemote
+
+    return Promise.reject(new Error("not yet implemented"));
+}
+
+/**
+ * Merge changes from this user's other clients in a remote store
+ * @param document The documet to merge changes into
+ * @param store The store to merge changes from
+ * @return The document with the changes applied to it
+ */
+export function mergeFromRemoteClients(document: Document, store: RemoteStore): Promise<Document> {
+    // TODO: implement mergeFromRemoteClients
+
+    // get master index to find a list of our clients
+
+    // filter to those clients we need to sync with (are newer than we've synced with)
+
+    // for every client, obtain the parts files and merge them into the document
+
+    // update the list of peers in the document
+
+    return Promise.reject(new Error("not yet implemented"));
+}
+
+/**
+ * Merge changes from other users
+ * @param document The document to merge changes into
+ * @param allStores All stores that can be used to download changes from other users
+ */
+export function mergeFromRemotePeers(
+    document: Document, allStores: RemoteStore[]
+): Promise<Document> {
+    // TODO: implement mergeFromRemotePeers
+
+    // construct the list of peers to obtain changes from
+
+    // filter to those peers we need to sync with (are newer than we've synced with)
+
+    // for every peer, obtain the parts files and merge them into the document
+
+    return Promise.reject(new Error("not yet implemented"));
 }
 
 export function getMasterIndex(documentID: ObjectID, store: RemoteStore): Promise<MasterIndex> {
@@ -89,7 +141,9 @@ export function getMasterIndex(documentID: ObjectID, store: RemoteStore): Promis
         parseJsonAs(file, ObjectDataType.MasterIndex) as MasterIndex);
 }
 
-function updateMasterIndex(document: Document, clientIndex: ClientIndex, store: RemoteStore): Promise<MasterIndex> {
+function updateMasterIndex(
+    document: Document, clientIndex: ClientIndex, clientIndexUrl: string, store: RemoteStore
+): Promise<MasterIndex> {
     return getMasterIndex(document.getID(), store)
         .then((masterIndex) => {
             // if we've never written to this store for this client, create a fresh client index
@@ -98,7 +152,7 @@ function updateMasterIndex(document: Document, clientIndex: ClientIndex, store: 
             }
             // update this client's info in the master index
             masterIndex.clients[clientIndex.clientID] = {
-                url: null, // TODO: set url
+                url: clientIndexUrl,
                 version: clientIndex.latest,
                 label: clientIndex.clientName
             };

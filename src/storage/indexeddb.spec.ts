@@ -73,7 +73,7 @@ describe("minisync storage", () => {
                 fileName: "file2",
                 contents: "bar"
             }).then((result) => {
-                expect(result).to.equal(true);
+                expect(result).to.be.an("object");
                 store.openDB().then((db) => {
                     const req = db.transaction("files").objectStore("files").get("path/file2");
                     req.onerror = done;

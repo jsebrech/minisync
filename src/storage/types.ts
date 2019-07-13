@@ -27,7 +27,7 @@ export interface FileData extends FileHandle {
  */
 export interface Store {
     /** Upload a file to a store (privately) */
-    putFile(file: FileData): Promise<boolean>;
+    putFile(file: FileData): Promise<FileHandle>;
     /** Download a file from a store, returns null if no such file exists */
     getFile(file: FileHandle): Promise<FileData>;
     /** List the files in a store's folder */

@@ -14,12 +14,15 @@ export class DropboxStore implements RemoteStore {
         readonly rootFolder: string = "minisync",
         readonly response?: typeof Response) { }
 
-    public putFile(file: FileData): Promise<boolean> {
+    public putFile(file: FileData): Promise<FileHandle> {
         return this.dropbox.filesUpload({
             path: this.pathToString(file.path) + file.fileName,
             contents: file.contents,
             mode: { ".tag": "overwrite" }
-        }).then((s: any) => true);
+        }).then((s: any) => ({
+            path: file.path,
+            fileName: file.fileName
+        }));
     }
 
     public getFile(file: FileHandle): Promise<FileData> {

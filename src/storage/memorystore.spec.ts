@@ -23,7 +23,7 @@ describe("minisync storage", () => {
                 fileName: "file",
                 contents: "foo"
             }).then((result) => {
-                expect(result).to.equal(true);
+                expect(result).to.be.an("object");
                 store.getFile({ path: ["path2"], fileName: "file"}).then((result) => {
                     expect(typeof result).to.equal("object");
                     expect(typeof result.path).to.equal("object");

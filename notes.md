@@ -4,7 +4,7 @@ Working Notes
 P2P backend strategy
 --------------------
 
-**Single user, multiple clients**
+### Single user, multiple clients
 
 All clients sync to their own folder and subscribe to each other's folders.
 A client is linked to one or more storage accounts, and uploads to its own folder in that account.
@@ -14,7 +14,7 @@ Index files allow detecting changes with minimal bandwidth use.
 ClientState.url = URL of client index file, string.
 Points to an index file that points to the other files.
 
-*Files*
+### Files
 
 Types of files:
 - `document-XXX/` folder: the folder in the store that a document is kept in
@@ -50,7 +50,7 @@ Types of files:
 - `latestUpdate`: 
   - `client`: string = client id
 
-*Syncing (single user)*
+### Syncing (single user)
 
 To download remote changes (from our clients)
 1. Download our master index file to get updated list of our clients
@@ -66,18 +66,22 @@ To upload changes, for every linked cloud storage account:
   3. Fetch the master index file
   4. Update master index with all necessary info, write it
 
-> A conflict can occur during writing of the master-index. When using a storage API that does not prevent this, the syncing will still work but may not be aware of some clients until those sync again.
+> A conflict can occur during writing of the master-index. When using a storage API that does not prevent this, 
+> the syncing will still work but may not be aware of some clients until those sync again.
 
-*Storing (single user)*
+> If after a while there are many old client folders, a purge operation can be run to discard ones that haven't been
+> updated in a long time. Those clients can still sync again, but it would mean they have to reupload everything.
+
+### Storing (single user)
 
 Store locally in the same format as remotely. See file structure above.
 Or use something more compact.
 
-Sync local state to all remote linked storage accounts.
+Sync local state to the remote linked storage account.
 
-For multiple storage accounts, store lastReceived in later synced accounts so remote clients on update resolution can detect the earlier synced accounts as a duplicate of the later synced accounts. Don't store lastReceived in earlier synced accounts for later ones, because there is no guarantee the syncing will complete.
+For multiple storage accounts, see gotcha's below.
 
-**Multiple users**
+### Multiple users
 
 First download (from remote user):
 1. Alice shares url of master index to bob
@@ -98,34 +102,50 @@ Next syncs:
 3. Bob syncs changes from the latestUpdate client from the master index file
 4. Bob publishes his changes to his linked storage account
 
+### Gotcha's
+
+**How to revoke access to a shared document to a specific peer**
+
+Intuitive, but wrong: piggy-back on store permission (e.g. dropbox permissions)
+
+  Will not work because the revoked peer may get updates via indirect channels if other peers do not also revoke them.
+
+Answer: not possible, fork the document into a new one that is not shared with the *revoked* user, then remove the original document.
+
+**How to migrate a document from one store to another**
+
+Strategy 1: fork the document and publish to the new store
+
+  Take the current state of the document and construct a new one from that, with new version history.
+  
+  > Caveat: cannot publish a document to multiple stores at the same time.
+
+Strategy 2: publish the document to two stores as the same client
+
+  Run the saveRemote routine on two stores.
+
+  > Caveat: risk of out of sync stores, makes it impossible to disambiguate conflicts (since the same client id is used with both stores)
+
+Strategy 3: publish the document to two stores as different clients
+
+  - Have two client id's, and two Document instances in memory.
+  - Merge changes between the Document instances.
+  - Publish each document to its own remote store.
+
+  Store lastReceived in later synced stores so remote clients on update resolution can detect the earlier synced stores as a duplicate of the later synced accounts. Don't store lastReceived in earlier synced accounts for later ones, because there is no guarantee the syncing will complete.
+
+  > Caveat: increases syncing effort because this creates more peers to sync with.
+
 P2P implementation notes
 ------------------------
 
 IndexedDB compat check:
 https://github.com/localForage/localForage/blob/master/src/utils/isIndexedDBValid.js
 
-current storage save/restore:
-- `[storageprovider]/documents/{document id}.json`
-
---> keep for local storage, saveLocal / restoreLocal (rename from save/restore)
-    This is more compact and therefore faster to read/write in simple cases.
-
-chunked (remote) storage:
-- `[storageprovider]/documents/`
-  - `document-{document id}/`
-    - `master-index.json`
-    - `client-{client id}/`
-      - `client-index.json`
-      - `partZZZ.json`
-
---> saveRemote / restoreRemote API
-
-In client-index.json keep track of chunk size, start a new chunk when the existing one exceeds the chunk size limit.
-
 Todo
 ----
 
-- implement `storage.saveRemote` / `storage.restoreRemote`, make it work with a mock storage provider
+- implement `storage.saveRemote` / `storage.mergeRemote`, make it work with a mock storage provider
 - implement `minisync.fromUrl` to start a new local document from a remote minisync document
   - what if it already exists locally? should have a way of obtaining the document id only and checking
   - what if it already exists in a remote store? how to avoid conflicts if users recreate the document on a new device?

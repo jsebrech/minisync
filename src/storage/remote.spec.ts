@@ -57,6 +57,7 @@ describe("minisync storage", () => {
             expect(clientEntry).to.be.an("object");
             expect(clientEntry.label).to.equal("Bob");
             expect(clientEntry.version).to.be.a("string");
+            expect(clientEntry.url).to.match(/^data:/);
 
             const clientIndex = await getClientIndex(document.getID(), document.getClientID(), store);
             expect(clientIndex).to.be.an("object");
@@ -97,6 +98,7 @@ describe("minisync storage", () => {
             expect(clientIndex.parts.length).to.equal(1);
             expect(clientIndex.parts[0].id).to.equal(0);
             expect(clientIndex.parts[0].toVersion).to.equal(document.getDocVersion());
+            expect(clientIndex.parts[0].url).to.match(/^data:/);
 
             const partFile = await store.getFile({
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],

@@ -51,7 +51,7 @@ describe("minisync storage", () => {
                 fileName: "file2",
                 contents: "bar"
             }).then((result) => {
-                expect(result).to.equal(true);
+                expect(result).to.be.an("object");
                 expect(window.localStorage.getItem("test//path/file2")).to.equal("bar");
                 done();
             }).catch((e) => done(new Error(e)));

@@ -38,7 +38,8 @@
             if (!clientIndex) {
                 clientIndex = newClientIndex(document.getClientID(), options.clientName);
             }
-            // determine part to write to (append latest or start new)
+            // determine the part file to write to (append latest or start new)
+            // the document is chunked across multiple files to keep files reasonably sized for network transfer
             var writeToPart = clientIndex.parts.slice().pop();
             if (writeToPart.size > (options.partSizeLimit || PART_SIZE_LIMIT)) {
                 writeToPart = {
@@ -50,7 +51,7 @@
                 };
                 clientIndex.parts.push(writeToPart);
             }
-            // write changes to part file, if necessary
+            // write changes to the part file, if necessary (version is newer than part file)
             if (!writeToPart.fromVersion || (document.getDocVersion() > writeToPart.toVersion)) {
                 writeToPart.toVersion = document.getDocVersion();
                 var data = document.getChanges(writeToPart.fromVersion);
@@ -61,6 +62,7 @@
                     fileName: "part-" + types_1.padStr(String(writeToPart.id), 8) + ".json",
                     contents: dataStr
                 }).then(function (success) {
+                    // update the client index and master index
                     clientIndex.latest = writeToPart.toVersion;
                     clientIndex.updated = types_1.dateToString(new Date());
                     if (options.clientName)
@@ -77,11 +79,44 @@
         });
     }
     exports.saveRemote = saveRemote;
-    function restoreRemote(documentID, store) {
-        // TODO: implement restoreRemote
+    /**
+     * Create a document by restoring it from the latest version in a store
+     * @param documentID The document's ID
+     * @param store The remote store to fetch it from
+     */
+    function createFromRemote(documentID, store) {
+        // TODO: implement createFromRemote
         return null;
     }
-    exports.restoreRemote = restoreRemote;
+    exports.createFromRemote = createFromRemote;
+    /**
+     * Merge changes from this user's other clients in a remote store
+     * @param document The documet to merge changes into
+     * @param store The store to merge changes from
+     * @return The document with the changes applied to it
+     */
+    function mergeFromRemoteClients(document, store) {
+        // TODO: implement mergeRemoteClients
+        // get master index to find a list of our clients
+        // filter to those clients we need to sync with (are newer than we've synced with)
+        // for every client, obtain the parts files and merge them into the document
+        // update the list of peers in the document
+        return Promise.resolve(document);
+    }
+    exports.mergeFromRemoteClients = mergeFromRemoteClients;
+    /**
+     * Merge changes from other users
+     * @param document The document to merge changes into
+     * @param allStores All stores that can be used to download changes from other users
+     */
+    function mergeFromRemotePeers(document, allStores) {
+        // TODO: implement mergeRemotePeers
+        // construct the list of peers to obtain changes from
+        // filter to those peers we need to sync with (are newer than we've synced with)
+        // for every peer, obtain the parts files and merge them into the document
+        return Promise.resolve(document);
+    }
+    exports.mergeFromRemotePeers = mergeFromRemotePeers;
     function getMasterIndex(documentID, store) {
         return store.getFile({
             path: pathFor(documentID),

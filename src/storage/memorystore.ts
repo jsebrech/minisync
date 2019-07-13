@@ -24,7 +24,7 @@ export class MemoryStore implements RemoteStore {
         });
     }
 
-    public putFile(file: FileData): Promise<boolean> {
+    public putFile(file: FileData): Promise<FileHandle> {
         return new Promise((resolve, reject) => {
             let folder = this.files;
             for (const part of file.path) {
@@ -32,7 +32,10 @@ export class MemoryStore implements RemoteStore {
                 folder = folder[part];
             }
             folder[file.fileName] = file.contents;
-            resolve(true);
+            resolve({
+                path: file.path,
+                fileName: file.fileName
+            });
         });
     }
 
