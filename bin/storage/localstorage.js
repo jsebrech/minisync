@@ -34,7 +34,10 @@
             var _this = this;
             return new Promise(function (resolve, reject) {
                 window.localStorage.setItem(_this.prefix + "//" + _this.encode(file), file.contents);
-                resolve(true);
+                resolve({
+                    path: file.path,
+                    fileName: file.fileName
+                });
             });
         };
         LocalStorageStore.prototype.listFiles = function (path) {

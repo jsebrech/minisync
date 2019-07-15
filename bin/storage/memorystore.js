@@ -46,7 +46,10 @@
                     folder = folder[part];
                 }
                 folder[file.fileName] = file.contents;
-                resolve(true);
+                resolve({
+                    path: file.path,
+                    fileName: file.fileName
+                });
             });
         };
         MemoryStore.prototype.listFiles = function (path) {

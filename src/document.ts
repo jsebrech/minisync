@@ -1,6 +1,6 @@
 import * as base64 from "./base64";
 import {Syncable} from "./syncable";
-import {AnyWithState, ChangesObject, ClientID, ClientState, isArray, ObjectDataType, State, Version} from "./types";
+import {ChangesObject, ClientID, ClientState, isArray, ObjectDataType, State, Version} from "./types";
 import * as uid from "./uid";
 
 /**
@@ -28,9 +28,13 @@ export class Document extends Syncable {
         super();
         this.setDocument(this);
         if (shouldMerge) {
-            this.setData({});
-            // ensure an initial state exists
+            // initialize as same document, but empty (before first version)
+            this.setData({ _s: {
+                id: data.documentID, u: null, t: null
+            }});
+            // set the initial version
             this.getDocVersion();
+            // merge all the remote changes into our blank document
             this.mergeChanges(data);
             // for all client states, mark last confirmed send as current version
             const clientStates: ClientState[] = this.getClientStates();
@@ -137,6 +141,7 @@ export class Document extends Syncable {
                 dataType: ObjectDataType.Changes,
                 version: 1
             },
+            documentID: this.getID(),
             sentBy: this.getClientID(),
             fromVersion: this.getDocVersion(),
             clientStates: this.getClientStates(),
@@ -152,6 +157,9 @@ export class Document extends Syncable {
      */
     public mergeChanges(data: ChangesObject | any): void {
         if (data as ChangesObject) {
+            if (data.documentID !== this.getID()) {
+                throw new Error("unable to merge changes from a different document");
+            }
             // state of remote client as stored in this copy of the document
             const clientState: ClientState = this.getClientState(data.sentBy);
             // state of this client as stored in the remote copy of the document

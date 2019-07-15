@@ -27,7 +27,10 @@
                 path: this.pathToString(file.path) + file.fileName,
                 contents: file.contents,
                 mode: { ".tag": "overwrite" }
-            }).then(function (s) { return true; });
+            }).then(function (s) { return ({
+                path: file.path,
+                fileName: file.fileName
+            }); });
         };
         DropboxStore.prototype.getFile = function (file) {
             var _this = this;

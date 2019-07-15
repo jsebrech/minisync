@@ -96,6 +96,8 @@ export type AnyValue = AnyWithState | ArrayWithState | any;
 export interface ChangesObject {
     /** Allows identifying this as a ChangesObject when untyped */
     _minisync: ChangesObjectVersion;
+    /** the document this is a changes object for */
+    documentID: ObjectID;
     /** Which client sent these changes */
     sentBy: ClientID;
     /** The client's version the changes were taken from */

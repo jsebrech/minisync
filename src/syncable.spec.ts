@@ -42,15 +42,16 @@ describe("minisync p2p", () => {
 
         it("should initialize from a changes object", () => {
             const c1 = minisync.from({foo: {bar: {baz: 42}}});
-            const c2 = minisync.from(c1.getChanges());
+            const changes = c1.getChanges();
+            const c2 = minisync.from(changes);
             compareObjects(getData(c1), getData(c2));
+            expect(c1.getID()).to.equal(c2.getID());
         });
 
         it("should merge changes for objects", () => {
             // initial sync
             const client1 = minisync.from({foo: 1, bar: 1});
-            const client2 = minisync.from();
-            client2.mergeChanges(client1.getChangesForClient(client2.getClientID()));
+            const client2 = minisync.from(client1.getChanges());
             compareObjects(getData(client1), getData(client2));
             // replacing non-object value with object value
             client2.set("bar", { baz: "test" });
@@ -70,8 +71,7 @@ describe("minisync p2p", () => {
         it("should merge changes without knowing client id", () => {
             // initial sync
             const client1 = minisync.from({foo: 1, bar: 1});
-            const client2 = minisync.from();
-            client2.mergeChanges(client1.getChanges());
+            const client2 = minisync.from(client1.getChanges());
             compareObjects(getData(client1), getData(client2));
             // replacing non-object value with object value
             client2.set("bar", { baz: "test" });
@@ -193,8 +193,7 @@ describe("minisync p2p", () => {
 
             it("should synchronize primitive values", () => {
                 const c1 = minisync.from({a: ["test", 123, false]});
-                const c2 = minisync.from({});
-                c2.mergeChanges(c1.getChanges());
+                const c2 = minisync.from(c1.getChanges());
                 compareObjects(getData(c1), getData(c2));
                 c2.set("a[1]", 321);
                 c2.mergeChanges(c1.getChanges());

@@ -14,8 +14,8 @@ export function saveLocal(document: Document, store: Store): Promise<ObjectID> {
         path: ["documents"],
         fileName: document.getID() + ".json",
         contents: JSON.stringify(document.getChanges())
-    }).then((success: boolean) => {
-        if (!success) throw new Error("Unexpected error saving document");
+    }).then((handle) => {
+        if (!handle) throw new Error("Unexpected error saving document");
         return document.getID();
     });
 }

@@ -86,7 +86,10 @@
                     name: file.fileName,
                     path: file.path.join("/"),
                     file: file
-                }, _this.handleToKey(file))).then(function (s) { return true; });
+                }, _this.handleToKey(file))).then(function (s) { return ({
+                    path: file.path,
+                    fileName: file.fileName
+                }); });
             });
         };
         IndexedDBStore.prototype.listFiles = function (path) {

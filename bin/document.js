@@ -54,9 +54,13 @@ var __extends = (this && this.__extends) || (function () {
             _this = _super.call(this) || this;
             _this.setDocument(_this);
             if (shouldMerge) {
-                _this.setData({});
-                // ensure an initial state exists
+                // initialize as same document, but empty (before first version)
+                _this.setData({ _s: {
+                        id: data.documentID, u: null, t: null
+                    } });
+                // set the initial version
                 _this.getDocVersion();
+                // merge all the remote changes into our blank document
                 _this.mergeChanges(data);
                 // for all client states, mark last confirmed send as current version
                 var clientStates = _this.getClientStates();
@@ -165,6 +169,7 @@ var __extends = (this && this.__extends) || (function () {
                     dataType: "CHANGES" /* Changes */,
                     version: 1
                 },
+                documentID: this.getID(),
                 sentBy: this.getClientID(),
                 fromVersion: this.getDocVersion(),
                 clientStates: this.getClientStates(),
@@ -179,6 +184,9 @@ var __extends = (this && this.__extends) || (function () {
          */
         Document.prototype.mergeChanges = function (data) {
             if (data) {
+                if (data.documentID !== this.getID()) {
+                    throw new Error("unable to merge changes from a different document");
+                }
                 // state of remote client as stored in this copy of the document
                 var clientState = this.getClientState(data.sentBy);
                 // state of this client as stored in the remote copy of the document

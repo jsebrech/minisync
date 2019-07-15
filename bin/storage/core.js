@@ -21,8 +21,8 @@
             path: ["documents"],
             fileName: document.getID() + ".json",
             contents: JSON.stringify(document.getChanges())
-        }).then(function (success) {
-            if (!success)
+        }).then(function (handle) {
+            if (!handle)
                 throw new Error("Unexpected error saving document");
             return document.getID();
         });

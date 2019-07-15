@@ -1,7 +1,8 @@
 import * as chai from "chai";
+import * as sinon from "sinon";
 import * as minisync from "../minisync";
 import { MemoryStore } from "./memorystore";
-import { getClientIndex, getMasterIndex, saveRemote } from "./remote";
+import { getClientIndex, getMasterIndex, mergeFromRemoteClients, saveRemote } from "./remote";
 
 const expect = chai.expect;
 
@@ -51,12 +52,13 @@ describe("minisync storage", () => {
             await saveRemote(document, store, { clientName: "Bob" });
             const masterIndex = await getMasterIndex(document.getID(), store);
             expect(masterIndex.clients).to.be.an("object");
-            const clientID = masterIndex.latestUpdate;
+            expect(masterIndex.latestUpdate).to.be.an("object");
+            const clientID = masterIndex.latestUpdate.clientID;
             expect(clientID).to.equal(document.getClientID());
             const clientEntry = masterIndex.clients[clientID];
             expect(clientEntry).to.be.an("object");
             expect(clientEntry.label).to.equal("Bob");
-            expect(clientEntry.version).to.be.a("string");
+            expect(clientEntry.lastReceived).to.be.a("string");
             expect(clientEntry.url).to.match(/^data:/);
 
             const clientIndex = await getClientIndex(document.getID(), document.getClientID(), store);
@@ -144,6 +146,52 @@ describe("minisync storage", () => {
             expect(partData.changes.foo).to.be.an("object");
             expect(partData.changes.foo.v).to.be.an("array");
             expect(partData.changes.foo.v).to.eql(["A", "B"]);
+        });
+
+        it("merges from remote clients", async () => {
+            store = new MemoryStore();
+            const client1 = minisync.from({foo: ["A"]});
+            await saveRemote(client1, store);
+
+            const client2 = minisync.from(client1.getChanges());
+            expect(client2.get("foo").getData()).to.eql(["A"]);
+
+            client1.set("foo[1]", "B");
+            await saveRemote(client1, store, { partSizeLimit: 1 });
+
+            await mergeFromRemoteClients(client2, store);
+            expect(client2.get("foo").getData()).to.eql(["A", "B"]);
+
+            client2.set("foo[2]", "C"),
+            await saveRemote(client2, store);
+
+            await mergeFromRemoteClients(client1, store);
+            expect(client1.get("foo").getData()).to.eql(["A", "B", "C"]);
+        });
+
+        it("minimizes remote calls when merging from remote clients", async () => {
+            store = new MemoryStore();
+
+            const client1 = minisync.from({foo: ["A"]});
+            await saveRemote(client1, store);
+            const client2 = minisync.from(client1.getChanges());
+            await saveRemote(client2, store);
+            client1.set("foo[1]", "B");
+            await saveRemote(client1, store);
+
+            await mergeFromRemoteClients(client2, store);
+            try {
+                sinon.spy(store, "getFile");
+                await mergeFromRemoteClients(client2, store);
+                await mergeFromRemoteClients(client2, store);
+                await mergeFromRemoteClients(client2, store);
+                expect((store.getFile as any).callCount).to.equal(3);
+                const args = (store.getFile as any).getCall(2).args;
+                expect(args.length).to.equal(1);
+                expect(args[0].fileName).to.equal("master-index.json");
+            } finally {
+                (store.getFile as any).restore();
+            }
         });
     });
 });

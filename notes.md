@@ -102,6 +102,8 @@ Next syncs:
 3. Bob syncs changes from the latestUpdate client from the master index file
 4. Bob publishes his changes to his linked storage account
 
+> Note: a peer only keeps track of master index url's for other peers, not of url's for specific client indexes
+
 ### Gotcha's
 
 **How to revoke access to a shared document to a specific peer**

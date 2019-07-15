@@ -96,28 +96,61 @@ export function createFromRemote(documentID: Document, store: RemoteStore): Prom
 
 /**
  * Merge changes from this user's other clients in a remote store
- * @param document The documet to merge changes into
+ * @param document The documet to merge changes into (this is modified by this operation!)
  * @param store The store to merge changes from
- * @return The document with the changes applied to it
+ * @return The document after the changes are applied to it
  */
-export function mergeFromRemoteClients(document: Document, store: RemoteStore): Promise<Document> {
-    // TODO: implement mergeFromRemoteClients
-
+export async function mergeFromRemoteClients(document: Document, store: RemoteStore): Promise<Document> {
     // get master index to find a list of our clients
+    const masterIndex = await getMasterIndex(document.getID(), store);
+    const clientStates = document.getClientStates();
 
     // filter to those clients we need to sync with (are newer than we've synced with)
+    // note: we don't download the client indexes here, even though the master index may be out of date
+    // because it would slow us down a lot and this circumstance should be rare and fix itself.
+    const clients = Object.entries(masterIndex.clients).filter(([clientID, client]) => {
+        const previous = clientStates.find((s) => s.clientID === clientID);
+        return !previous || (previous.lastReceived < client.lastReceived);
+    }).map((v) => v[0]);
 
-    // for every client, obtain the parts files and merge them into the document
+    // for every client, obtain the parts files
+    const changes = await Promise.all(
+        // fetch in parallel
+        clients.map(async (clientID) => {
+            const clientIndex = await getClientIndex(document.getID(), clientID, store);
+            const previous = clientStates.find((s) => s.clientID === clientIndex.clientID);
+            const parts =
+                clientIndex.parts.filter((part) => (!previous) || (previous.lastReceived < part.toVersion));
+            const files = await Promise.all(
+                // fetch in parallel
+                parts.map((part) => store.getFile({
+                    path: pathFor(document.getID(), clientID),
+                    fileName: "part-" + padStr(String(part.id), 8) + ".json"
+                }))
+            );
+            // for this client, we must merge these change parts
+            return {
+                clientIndex,
+                parts: files
+            };
+        })
+    );
 
-    // update the list of peers in the document
+    // merge all the parts into the document, sequentially by client, and then by part
+    for (const change of changes) {
+        for (const part of change.parts) {
+            document.mergeChanges(JSON.parse(part.contents));
+        }
+    }
 
-    return Promise.reject(new Error("not yet implemented"));
+    return document;
 }
 
 /**
  * Merge changes from other users
- * @param document The document to merge changes into
+ * @param document The document to merge changes into (this is modified by this operation!)
  * @param allStores All stores that can be used to download changes from other users
+ * @return The document after the changes are applied to it
  */
 export function mergeFromRemotePeers(
     document: Document, allStores: RemoteStore[]
@@ -153,10 +186,13 @@ function updateMasterIndex(
             // update this client's info in the master index
             masterIndex.clients[clientIndex.clientID] = {
                 url: clientIndexUrl,
-                version: clientIndex.latest,
+                lastReceived: clientIndex.latest,
                 label: clientIndex.clientName
             };
-            masterIndex.latestUpdate = clientIndex.clientID;
+            masterIndex.latestUpdate = {
+                clientID: clientIndex.clientID,
+                updated: clientIndex.updated
+            };
             return store.putFile({
                 path: pathFor(document.getID()),
                 fileName: "master-index.json",
@@ -235,7 +271,7 @@ function newMasterIndex(document: Document): MasterIndex {
         },
         label: null,
         clients: {},
-        peers: {},
+        peers: [],
         latestUpdate: null
     };
 }

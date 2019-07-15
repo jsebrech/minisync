@@ -51,10 +51,10 @@ export interface RemoteStore extends Store {
 
 /** Description of a remote client */
 export interface RemoteClient {
-    /** URL to the master index of that client */
+    /** URL to the client index of that client */
     url: string;
     /** The version we've last seen of this client */
-    version: Version;
+    lastReceived: Version;
     /** Humna-visible description of this client */
     label ?: string;
 }
@@ -62,6 +62,23 @@ export interface RemoteClient {
 /** Group of remote client descriptions, indexed by client id */
 export interface RemoteClients {
     [key: string]: RemoteClient;
+}
+
+export interface LatestUpdate {
+    /** the client ID that was synced with */
+    clientID: ClientID;
+    /** the timestamp that the version we synced with was generated */
+    updated: Timestamp;
+}
+
+/** Description of another peer (user that shares a document with us) */
+export interface RemotePeer {
+    /** URL to the master index of that peer */
+    url: string;
+    /** The timestamp that we last synced with this peer */
+    latestUpdate: LatestUpdate;
+    /** Human-visible description of this peer (copied from their master index) */
+    label: string;
 }
 
 /**
@@ -72,12 +89,12 @@ export interface MasterIndex {
     _minisync: ChangesObjectVersion;
     /** Human-visible description of this peer */
     label: string;
-    /** List of all the cclients of this peer */
+    /** List of all the clients of this peer */
     clients: RemoteClients;
     /** List of all the other peers' clients this peer knows */
-    peers: RemoteClients;
+    peers: RemotePeer[];
     /** This file was last updated by this client */
-    latestUpdate: ClientID;
+    latestUpdate: LatestUpdate;
 }
 
 /**
