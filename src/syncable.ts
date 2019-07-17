@@ -135,15 +135,27 @@ export class Syncable {
         return new Proxy(this.data, {
             get: (target: any, property: string) => {
                 if (property === "_s") return undefined;
-                let prop = self.get(property);
-                if (prop instanceof Syncable) prop = prop.getProxy();
-                return prop;
+                // if we're trying to call a method
+                if (typeof self.data[property] === "function") {
+                    const method = (self as any)[property];
+                    // do we have a Syncable variation of that method? call that instead
+                    if (typeof method === "function") {
+                        return ((...args: any[]) => method.apply(this, args)).bind(self);
+                    // otherwise, pretend it doesn't exist
+                    } else {
+                        return undefined;
+                    }
+                } else {
+                    let prop = self.get(property);
+                    if (prop instanceof Syncable) prop = prop.getProxy();
+                    return prop;
+                }
             },
             set: (target: any, property: string, value: any) => {
                 return self.set(property, value);
             },
             ownKeys: (target: any) => {
-                const keys: string[] = target.getOwnPropertyNames();
+                const keys: string[] = Object.getOwnPropertyNames(target);
                 return keys.filter((value: string) => value !== "_s");
             },
             has: (target: any, property: string) => {

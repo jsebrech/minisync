@@ -66,11 +66,14 @@ export interface State {
     a?: boolean;
     /** for arrays, list of removed objects */
     ri?: ArrayRemovedObject[];
-    /** only for Document, the document-level version */
+}
+
+export interface DocumentState extends State {
+    /** the document-level version */
     v?: Version;
-    /** only for Document, the client id for the local client managing the document */
+    /** the client id for the local client managing the document */
     clientID?: ClientID;
-    /** only for Document, version-tracking for the versions known by remote clients */
+    /** version-tracking for the versions known by remote clients */
     remote?: ClientState[];
 }
 

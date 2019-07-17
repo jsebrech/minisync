@@ -1,6 +1,6 @@
 import * as base64 from "./base64";
 import {Syncable} from "./syncable";
-import {ChangesObject, ClientID, ClientState, isArray, ObjectDataType, State, Version} from "./types";
+import {ChangesObject, ClientID, ClientState, DocumentState, isArray, ObjectDataType, Version} from "./types";
 import * as uid from "./uid";
 
 /**
@@ -58,9 +58,16 @@ export class Document extends Syncable {
      * @return {string}
      */
     public getClientID(): ClientID {
-        const state: State = this.getState();
+        const state: DocumentState = this.getState();
         if (!state.clientID) state.clientID = uid.nextLong();
         return state.clientID;
+    }
+
+    /**
+     * Returns the synchronization state of this document
+     */
+    public getState(): DocumentState {
+        return super.getState() as DocumentState;
     }
 
     /**
@@ -107,7 +114,7 @@ export class Document extends Syncable {
      * @returns {Array}
      */
     public getClientStates(): ClientState[] {
-        const state: State = this.getState();
+        const state: DocumentState = this.getState();
         if (!state.remote) state.remote = [];
         return state.remote;
     }
@@ -225,7 +232,7 @@ export class Document extends Syncable {
      * @param states
      */
     private setClientStates(states: ClientState[]): void {
-        const state: State = this.getState();
+        const state: DocumentState = this.getState();
         state.remote = states || [];
     }
 

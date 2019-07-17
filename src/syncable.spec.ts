@@ -2,7 +2,6 @@ import * as minisync from "./minisync";
 import { compareObjects, getData } from "./test-utils";
 
 import * as chai from "chai";
-import * as mocha from "mocha";
 import * as sinon from "sinon";
 import { SyncableArray } from "./syncable";
 
@@ -180,15 +179,18 @@ describe("minisync p2p", () => {
                     {after: c2.get("a[2]").getID(), before: null, values: [5]}
                 ];
                 let expectedIntervalIndex = 0;
-                sinon.replace(SyncableArray.prototype, "mergeInterval",
-                    (interval: any) => {
-                        const expectedInterval = expectedIntervals[expectedIntervalIndex++];
-                        compareObjects(interval, expectedInterval);
-                    }
-                );
-                c2.mergeChanges(c1.getChanges());
-                expect(expectedIntervalIndex).to.equal(3);
-                sinon.restore();
+                try {
+                    sinon.replace(SyncableArray.prototype, "mergeInterval",
+                        (interval: any) => {
+                            const expectedInterval = expectedIntervals[expectedIntervalIndex++];
+                            compareObjects(interval, expectedInterval);
+                        }
+                    );
+                    c2.mergeChanges(c1.getChanges());
+                    expect(expectedIntervalIndex).to.equal(3);
+                } finally {
+                    sinon.restore();
+                }
             });
 
             it("should synchronize primitive values", () => {
@@ -315,6 +317,28 @@ describe("minisync p2p", () => {
             delete p.quu;
             c2.mergeChanges(o1.getChanges());
             expect(c2.getData().quu).to.be.an("undefined");
+        });
+
+        it("should support array methods", () => {
+            const o = minisync.from({
+                foo: ["bar", "baz"]
+            });
+            const originalVersion = o.getDocVersion();
+            const p = o.getProxy();
+
+            expect(p.foo.slice(0, 1)).to.eql(["bar"]);
+            expect(o.getDocVersion()).to.equal(originalVersion);
+            try {
+                sinon.spy(SyncableArray.prototype, "push");
+                // inject data through a method, should have incremented the document version
+                p.foo.push("xyzzy");
+                expect(p.foo).to.eql(["bar", "baz", "xyzzy"]);
+                expect(o.getDocVersion()).not.to.equal(originalVersion);
+                // and should have called our own push method
+                expect((SyncableArray.prototype.push as any).callCount).to.equal(1);
+            } finally {
+                (SyncableArray.prototype.push as any).restore();
+            }
         });
     });
 

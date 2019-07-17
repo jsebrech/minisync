@@ -153,18 +153,20 @@ describe("minisync storage", () => {
             const client1 = minisync.from({foo: ["A"]});
             await saveRemote(client1, store);
 
+            // should be identical
             const client2 = minisync.from(client1.getChanges());
             expect(client2.get("foo").getData()).to.eql(["A"]);
 
             client1.set("foo[1]", "B");
+            // vreates another parts file, containing only B
             await saveRemote(client1, store, { partSizeLimit: 1 });
-
+            // will merge the second part from client1
             await mergeFromRemoteClients(client2, store);
             expect(client2.get("foo").getData()).to.eql(["A", "B"]);
 
+            // now reverse direction and add C from client2 into client1
             client2.set("foo[2]", "C"),
             await saveRemote(client2, store);
-
             await mergeFromRemoteClients(client1, store);
             expect(client1.get("foo").getData()).to.eql(["A", "B", "C"]);
         });
@@ -179,9 +181,11 @@ describe("minisync storage", () => {
             client1.set("foo[1]", "B");
             await saveRemote(client1, store);
 
+            // merge all changes
             await mergeFromRemoteClients(client2, store);
             try {
                 sinon.spy(store, "getFile");
+                // nothing to merge, so we should see only 3 fetches of master-index.json
                 await mergeFromRemoteClients(client2, store);
                 await mergeFromRemoteClients(client2, store);
                 await mergeFromRemoteClients(client2, store);

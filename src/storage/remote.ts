@@ -88,7 +88,7 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
  * @param documentID The document's ID
  * @param store The remote store to fetch it from
  */
-export function createFromRemote(documentID: Document, store: RemoteStore): Promise<Document> {
+export async function createFromRemote(documentID: Document, store: RemoteStore): Promise<Document> {
     // TODO: implement createFromRemote
 
     return Promise.reject(new Error("not yet implemented"));
@@ -152,12 +152,12 @@ export async function mergeFromRemoteClients(document: Document, store: RemoteSt
  * @param allStores All stores that can be used to download changes from other users
  * @return The document after the changes are applied to it
  */
-export function mergeFromRemotePeers(
+export async function mergeFromRemotePeers(
     document: Document, allStores: RemoteStore[]
 ): Promise<Document> {
     // TODO: implement mergeFromRemotePeers
 
-    // construct the list of peers to obtain changes from
+    // construct the list of peers to obtain changes from (from masterindex)
 
     // filter to those peers we need to sync with (are newer than we've synced with)
 
