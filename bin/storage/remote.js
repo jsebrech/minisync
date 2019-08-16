@@ -39,11 +39,12 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define(["require", "exports", "../types"], factory);
+        define(["require", "exports", "../document", "../types"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    var document_1 = require("../document");
     var types_1 = require("../types");
     // remote syncing API
     // 1 MB
@@ -116,15 +117,106 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
     exports.saveRemote = saveRemote;
     /**
+     * Publish a saved document as a URL that can be synced by other peers
+     * @param documentID The document to publish
+     * @param store The store it is stored in (must be up to date in this store)
+     */
+    function publishRemote(documentID, store) {
+        return store.publishFile({
+            path: pathFor(documentID),
+            fileName: "master-index.json"
+        });
+    }
+    exports.publishRemote = publishRemote;
+    /**
      * Create a document by restoring it from the latest version in a store
      * @param documentID The document's ID
      * @param store The remote store to fetch it from
+     * @param forClientID Instead of restoring the latest version as a new client,
+     * restore as this client ID from that client's remote version
      */
-    function createFromRemote(documentID, store) {
-        // TODO: implement createFromRemote
-        return Promise.reject(new Error("not yet implemented"));
+    function createFromRemote(documentID, store, forClientID) {
+        var _this = this;
+        // get our master index
+        return getMasterIndex(documentID, store)
+            // and find the right client's index
+            .then(function (masterIndex) {
+            return getClientIndex(documentID, forClientID || masterIndex.latestUpdate.clientID, store);
+        })
+            // get that client's data parts (changes object files)
+            .then(function (clientIndex) { return __awaiter(_this, void 0, void 0, function () {
+            var files;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4 /*yield*/, Promise.all(
+                        // fetch in parallel
+                        clientIndex.parts.map(function (part) { return store.getFile({
+                            path: pathFor(documentID, clientIndex.clientID),
+                            fileName: "part-" + types_1.padStr(String(part.id), 8) + ".json"
+                        }).then(function (file) { return file.contents; }); }))];
+                    case 1:
+                        files = _a.sent();
+                        // for this client, we must merge these change parts
+                        return [2 /*return*/, {
+                                clientIndex: clientIndex,
+                                parts: files
+                            }];
+                }
+            });
+        }); })
+            // and reconstruct a document from those parts
+            .then(function (changes) { return documentFromClientData(changes, forClientID); });
     }
     exports.createFromRemote = createFromRemote;
+    /**
+     * Create a document by restoring it from a remote url (of a master index file)
+     * @param url The URL of the master index to restore from
+     * @param stores The set of remote stores to try downloading it through (first one that matches will download)
+     * @return A promise for a new Document instance, which is rejected if it is unable to restore from that url
+     */
+    function createFromUrl(url, stores) {
+        var _this = this;
+        var store = stores.find(function (store) { return store.canDownloadUrl(url); });
+        if (store) {
+            // get their master index
+            return store.downloadUrl(url)
+                .then(function (file) { return parseJsonAs({ path: [], fileName: url, contents: file }, "MASTER-INDEX" /* MasterIndex */); })
+                // then get the most recently updated client's index
+                .then(function (masterIndex) { return __awaiter(_this, void 0, void 0, function () {
+                var client;
+                return __generator(this, function (_a) {
+                    client = masterIndex.clients[masterIndex.latestUpdate.clientID];
+                    if (!client) {
+                        return [2 /*return*/, Promise.reject(new Error("unable to parse master index at " + url + ", latest updated client not found"))];
+                    }
+                    return [2 /*return*/, store.downloadUrl(client.url)
+                            .then(function (file) { return parseJsonAs({ path: [], fileName: client.url, contents: file }, "CLIENT-INDEX" /* ClientIndex */); })];
+                });
+            }); })
+                // get that client's data parts (changes object files)
+                .then(function (clientIndex) { return __awaiter(_this, void 0, void 0, function () {
+                var files;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, Promise.all(
+                            // fetch in parallel
+                            clientIndex.parts.map(function (part) { return store.downloadUrl(part.url); }))];
+                        case 1:
+                            files = _a.sent();
+                            // for this client, we must merge these change parts
+                            return [2 /*return*/, {
+                                    clientIndex: clientIndex,
+                                    parts: files
+                                }];
+                    }
+                });
+            }); })
+                // and restore a document from those parts
+                .then(documentFromClientData);
+        }
+        return Promise.reject(new Error("unable to download " + url + " as a document"));
+    }
+    exports.createFromUrl = createFromUrl;
     /**
      * Merge changes from this user's other clients in a remote store
      * @param document The documet to merge changes into (this is modified by this operation!)
@@ -196,11 +288,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
      * @return The document after the changes are applied to it
      */
     function mergeFromRemotePeers(document, allStores) {
-        // TODO: implement mergeFromRemotePeers
-        // construct the list of peers to obtain changes from
-        // filter to those peers we need to sync with (are newer than we've synced with)
-        // for every peer, obtain the parts files and merge them into the document
-        return Promise.reject(new Error("not yet implemented"));
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                // TODO: implement mergeFromRemotePeers
+                // construct the list of peers to obtain changes from (from masterindex)
+                // filter to those peers we need to sync with (are newer than we've synced with)
+                // for every peer, obtain the parts files and merge them into the document
+                return [2 /*return*/, Promise.reject(new Error("not yet implemented"))];
+            });
+        });
     }
     exports.mergeFromRemotePeers = mergeFromRemotePeers;
     function getMasterIndex(documentID, store) {
@@ -306,6 +402,18 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
             peers: [],
             latestUpdate: null
         };
+    }
+    function documentFromClientData(changes, forClientID) {
+        var parts = changes.parts.slice();
+        if (parts.length) {
+            var document_2 = new document_1.Document(JSON.parse(parts.shift()), changes.clientIndex.clientID === forClientID);
+            for (var _i = 0, parts_1 = parts; _i < parts_1.length; _i++) {
+                var part = parts_1[_i];
+                document_2.mergeChanges(JSON.parse(part));
+            }
+            return document_2;
+        }
+        throw new Error("unable to restore documents, no changes data to restore from");
     }
 });
 //# sourceMappingURL=remote.js.map

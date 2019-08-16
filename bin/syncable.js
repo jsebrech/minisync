@@ -148,16 +148,36 @@ var __extends = (this && this.__extends) || (function () {
                 get: function (target, property) {
                     if (property === "_s")
                         return undefined;
-                    var prop = self.get(property);
-                    if (prop instanceof Syncable)
-                        prop = prop.getProxy();
-                    return prop;
+                    // if we're trying to call a method
+                    if (typeof self.data[property] === "function") {
+                        var method_1 = self[property];
+                        // do we have a Syncable variation of that method? call that instead
+                        if (typeof method_1 === "function") {
+                            return (function () {
+                                var args = [];
+                                for (var _i = 0; _i < arguments.length; _i++) {
+                                    args[_i] = arguments[_i];
+                                }
+                                return method_1.apply(_this, args);
+                            }).bind(self);
+                            // otherwise, pretend it doesn't exist
+                        }
+                        else {
+                            return undefined;
+                        }
+                    }
+                    else {
+                        var prop = self.get(property);
+                        if (prop instanceof Syncable)
+                            prop = prop.getProxy();
+                        return prop;
+                    }
                 },
                 set: function (target, property, value) {
                     return self.set(property, value);
                 },
                 ownKeys: function (target) {
-                    var keys = target.getOwnPropertyNames();
+                    var keys = Object.getOwnPropertyNames(target);
                     return keys.filter(function (value) { return value !== "_s"; });
                 },
                 has: function (target, property) {

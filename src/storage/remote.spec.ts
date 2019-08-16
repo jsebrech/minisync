@@ -2,7 +2,8 @@ import * as chai from "chai";
 import * as sinon from "sinon";
 import * as minisync from "../minisync";
 import { MemoryStore } from "./memorystore";
-import { getClientIndex, getMasterIndex, mergeFromRemoteClients, saveRemote } from "./remote";
+import { createFromRemote, createFromUrl, getClientIndex, getMasterIndex,
+    mergeFromRemoteClients, publishRemote, saveRemote } from "./remote";
 
 const expect = chai.expect;
 
@@ -196,6 +197,34 @@ describe("minisync storage", () => {
             } finally {
                 (store.getFile as any).restore();
             }
+        });
+
+        it("restores from a documentID and a store", async () => {
+            store = new MemoryStore();
+
+            const client1 = minisync.from({foo: ["A"]});
+            await saveRemote(client1, store);
+            client1.set("foo[1]", "B");
+            // vreates another parts file, containing only B
+            await saveRemote(client1, store, { partSizeLimit: 1 });
+
+            const client2 = await createFromRemote(client1.getID(), store);
+            expect(client2.getData()).to.eql(client1.getData());
+        });
+
+        it("restores from a url", async () => {
+            store = new MemoryStore();
+
+            const client1 = minisync.from({foo: ["A"]});
+            await saveRemote(client1, store);
+            client1.set("foo[1]", "B");
+            // vreates another parts file, containing only B
+            const clientIndex = await saveRemote(client1, store, { partSizeLimit: 1 });
+            // publish the master index
+            const url = await publishRemote(client1.getID(), store);
+            // construct a new client from the published url
+            const client2 = await createFromUrl(url, [store]);
+            expect(client2.getData()).to.eql(client1.getData());
         });
     });
 });

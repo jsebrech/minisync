@@ -84,14 +84,95 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
 }
 
 /**
+ * Publish a saved document as a URL that can be synced by other peers
+ * @param documentID The document to publish
+ * @param store The store it is stored in (must be up to date in this store)
+ */
+export function publishRemote(documentID: ObjectID, store: RemoteStore): Promise<string> {
+    return store.publishFile({
+        path: pathFor(documentID),
+        fileName: "master-index.json"
+    });
+}
+
+/**
  * Create a document by restoring it from the latest version in a store
  * @param documentID The document's ID
  * @param store The remote store to fetch it from
+ * @param forClientID Instead of restoring the latest version as a new client,
+ * restore as this client ID from that client's remote version
  */
-export async function createFromRemote(documentID: Document, store: RemoteStore): Promise<Document> {
-    // TODO: implement createFromRemote
+export function createFromRemote(
+    documentID: ObjectID, store: RemoteStore, forClientID ?: ObjectID
+): Promise<Document> {
+    // get our master index
+    return getMasterIndex(documentID, store)
+        // and find the right client's index
+        .then((masterIndex) =>
+            getClientIndex(documentID, forClientID || masterIndex.latestUpdate.clientID, store))
+        // get that client's data parts (changes object files)
+        .then(async (clientIndex) => {
+            const files = await Promise.all(
+                // fetch in parallel
+                clientIndex.parts.map((part) => store.getFile({
+                    path: pathFor(documentID, clientIndex.clientID),
+                    fileName: "part-" + padStr(String(part.id), 8) + ".json"
+                }).then((file) => file.contents))
+            );
+            // for this client, we must merge these change parts
+            return {
+                clientIndex,
+                parts: files
+            };
+        })
+        // and reconstruct a document from those parts
+        .then((changes) => documentFromClientData(changes, forClientID));
+}
 
-    return Promise.reject(new Error("not yet implemented"));
+/**
+ * Create a document by restoring it from a remote url (of a master index file)
+ * @param url The URL of the master index to restore from
+ * @param stores The set of remote stores to try downloading it through (first one that matches will download)
+ * @return A promise for a new Document instance, which is rejected if it is unable to restore from that url
+ */
+export function createFromUrl(url: string, stores: RemoteStore[]): Promise<Document> {
+    const store = stores.find((store) => store.canDownloadUrl(url));
+    if (store) {
+        // get their master index
+        return store.downloadUrl(url)
+            .then((file) => parseJsonAs(
+                { path: [], fileName: url, contents: file},
+                ObjectDataType.MasterIndex
+            ) as MasterIndex)
+            // then get the most recently updated client's index
+            .then(async (masterIndex) => {
+                const client = masterIndex.clients[masterIndex.latestUpdate.clientID];
+                if (!client) {
+                    return Promise.reject(new Error(
+                        `unable to parse master index at ${url}, latest updated client not found`));
+                }
+                return store.downloadUrl(client.url)
+                    .then((file) => parseJsonAs(
+                        { path: [], fileName: client.url, contents: file},
+                        ObjectDataType.ClientIndex
+                    ) as ClientIndex);
+            })
+            // get that client's data parts (changes object files)
+            .then(async (clientIndex) => {
+                const files = await Promise.all(
+                    // fetch in parallel
+                    clientIndex.parts.map((part) => store.downloadUrl(part.url))
+                );
+                // for this client, we must merge these change parts
+                return {
+                    clientIndex,
+                    parts: files
+                };
+            })
+            // and restore a document from those parts
+            .then(documentFromClientData);
+    }
+    return Promise.reject(new Error(`unable to download ${url} as a document`));
 }
 
 /**
@@ -274,4 +355,22 @@ function newMasterIndex(document: Document): MasterIndex {
         peers: [],
         latestUpdate: null
     };
+}
+
+interface ClientData {
+    clientIndex: ClientIndex;
+    parts: string[];
+}
+
+function documentFromClientData(changes: ClientData, forClientID ?: ObjectID): Document {
+    const parts = changes.parts.slice();
+    if (parts.length) {
+        const document = new Document(
+            JSON.parse(parts.shift()), changes.clientIndex.clientID === forClientID);
+        for (const part of parts) {
+            document.mergeChanges(JSON.parse(part));
+        }
+        return document;
+    }
+    throw new Error("unable to restore documents, no changes data to restore from");
 }

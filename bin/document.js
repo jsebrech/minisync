@@ -93,6 +93,12 @@ var __extends = (this && this.__extends) || (function () {
             return state.clientID;
         };
         /**
+         * Returns the synchronization state of this document
+         */
+        Document.prototype.getState = function () {
+            return _super.prototype.getState.call(this);
+        };
+        /**
          * Return the master version for this document (on this client)
          * @returns {string}
          */
