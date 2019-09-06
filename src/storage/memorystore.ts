@@ -1,4 +1,4 @@
-import { FileData, FileHandle, RemoteStore } from "./types";
+import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "./types";
 
 const DATA_URI_PREFIX = "data:text/plain;base64,";
 
@@ -24,7 +24,7 @@ export class MemoryStore implements RemoteStore {
         });
     }
 
-    public putFile(file: FileData): Promise<FileHandle> {
+    public putFile(file: FileData): Promise<RemoteFileHandle> {
         return new Promise((resolve, reject) => {
             let folder = this.files;
             for (const part of file.path) {
@@ -34,7 +34,8 @@ export class MemoryStore implements RemoteStore {
             folder[file.fileName] = file.contents;
             resolve({
                 path: file.path,
-                fileName: file.fileName
+                fileName: file.fileName,
+                url: DATA_URI_PREFIX + btoa(file.contents)
             });
         });
     }
@@ -53,12 +54,6 @@ export class MemoryStore implements RemoteStore {
             }
         }
         return Promise.resolve(result);
-    }
-
-    public publishFile(file: FileHandle): Promise<string> {
-        return this.getFile(file).then((data) =>
-            DATA_URI_PREFIX + btoa(data.contents)
-        );
     }
 
     public canDownloadUrl(url: string): boolean {

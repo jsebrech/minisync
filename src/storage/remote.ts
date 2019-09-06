@@ -1,11 +1,11 @@
 import { Document } from "../document";
 import { ClientID, dateToString, ObjectDataType, ObjectID, padStr } from "../types";
-import { ClientIndex, FileData, FileHandle, MasterIndex, RemoteStore } from "./types";
+import { ClientIndex, FileData, FileHandle, MasterIndex, RemoteClientIndex, RemoteStore } from "./types";
 
 // remote syncing API
 
 // 1 MB
-const PART_SIZE_LIMIT = 1024 * 1024;
+const DEFAULT_PART_SIZE_LIMIT = 1024 * 1024;
 
 interface SaveRemoteOptions {
     /** human-readable name of the client doing the syncing */
@@ -15,10 +15,11 @@ interface SaveRemoteOptions {
 }
 
 /**
- * Saves a document to a remote store for the current client
+ * Saves a document to a remote store for the current client (if changed)
  * @param document The document to save
  * @param store The remote store to save to
  * @param options Additional configuration options
+ * @return the updated client index in case data was saved, null otherwise
  *
  * The remote store is organized like this:
  * - `documents/`
@@ -29,7 +30,9 @@ interface SaveRemoteOptions {
  *       - `part-...`
  *    - `master-index.json`: the index for all the user's clients that have synced to this folder
  */
-export function saveRemote(document: Document, store: RemoteStore, options?: SaveRemoteOptions): Promise<ClientIndex> {
+export function saveRemote(
+    document: Document, store: RemoteStore, options?: SaveRemoteOptions
+    ): Promise<RemoteClientIndex> {
     // what have we stored before?
     return getClientIndex(document.getID(), document.getClientID(), store)
         .then((clientIndex: ClientIndex) => {
@@ -41,7 +44,7 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
             // determine the part file to write to (append latest or start new)
             // the document is chunked across multiple files to keep files reasonably sized for network transfer
             let writeToPart = clientIndex.parts.slice().pop();
-            if (writeToPart.size > (options.partSizeLimit || PART_SIZE_LIMIT)) {
+            if (writeToPart.size > (options.partSizeLimit || DEFAULT_PART_SIZE_LIMIT)) {
                 writeToPart = {
                     id: writeToPart.id + 1,
                     fromVersion: writeToPart.toVersion,
@@ -61,38 +64,27 @@ export function saveRemote(document: Document, store: RemoteStore, options?: Sav
                     path: pathFor(document.getID(), document.getClientID()),
                     fileName: "part-" + padStr(String(writeToPart.id), 8) + ".json",
                     contents: dataStr
-                }).then(
-                    (handle) => store.publishFile(handle)
-                ).then((publishedUrl) => {
-                    writeToPart.url = publishedUrl;
+                }).then(async (remotePartFile) => {
+                    writeToPart.url = remotePartFile.url;
+                    const remoteClientIndex = Object.assign({}, clientIndex);
                     // update the client index and master index
                     clientIndex.latest = writeToPart.toVersion;
                     clientIndex.updated = dateToString(new Date());
                     if (options.clientName) clientIndex.clientName = options.clientName;
-                    return store.putFile({
+                    const clientIndexFile = await store.putFile({
                         path: pathFor(document.getID(), clientIndex.clientID),
                         fileName: "client-index.json",
                         contents: JSON.stringify(clientIndex)
-                    }).then(
-                        (handle) => store.publishFile(handle)
-                    ).then(
-                        (url) => updateMasterIndex(document, clientIndex, url, store)
-                    ).then(() => clientIndex);
+                    });
+                    const masterIndexFile =
+                        await updateMasterIndex(document, clientIndex, clientIndexFile.url, store);
+                    return Object.assign(
+                        { url: clientIndexFile.url, masterIndexUrl: masterIndexFile.url},
+                        clientIndex
+                    );
                 });
-            } else return clientIndex;
+            } else return null;
         });
-}
-
-/**
- * Publish a saved document as a URL that can be synced by other peers
- * @param documentID The document to publish
- * @param store The store it is stored in (must be up to date in this store)
- */
-export function publishRemote(documentID: ObjectID, store: RemoteStore): Promise<string> {
-    return store.publishFile({
-        path: pathFor(documentID),
-        fileName: "master-index.json"
-    });
 }
 
 /**
@@ -188,7 +180,7 @@ export async function mergeFromRemoteClients(document: Document, store: RemoteSt
 
     // filter to those clients we need to sync with (are newer than we've synced with)
     // note: we don't download the client indexes here, even though the master index may be out of date
-    // because it would slow us down a lot and this circumstance should be rare and fix itself.
+    // because it would slow us down a lot and this circumstance should be rare and fix itself on the next sync.
     const clients = Object.entries(masterIndex.clients).filter(([clientID, client]) => {
         const previous = clientStates.find((s) => s.clientID === clientID);
         return !previous || (previous.lastReceived < client.lastReceived);
@@ -230,17 +222,26 @@ export async function mergeFromRemoteClients(document: Document, store: RemoteSt
 /**
  * Merge changes from other users
  * @param document The document to merge changes into (this is modified by this operation!)
+ * @param myStore The store our document is kept in (keeps the master index)
  * @param allStores All stores that can be used to download changes from other users
  * @return The document after the changes are applied to it
  */
 export async function mergeFromRemotePeers(
-    document: Document, allStores: RemoteStore[]
+    document: Document, myStore: RemoteStore, allStores: RemoteStore[]
 ): Promise<Document> {
     // TODO: implement mergeFromRemotePeers
 
     // construct the list of peers to obtain changes from (from masterindex)
+    const masterIndex = await getMasterIndex(document.getID(), myStore);
 
     // filter to those peers we need to sync with (are newer than we've synced with)
+    // and can sync with (actually responds when we try to fetch their master index)
+    const peers = masterIndex.peers.map(async (peer) => {
+        const masterIndex = getRemoteFile(peer.url, allStores);
+        // TODO: parse as json
+        // basic problem outline: FileHandle and url are different things, but should be the same
+        // then the client and peer paths can be merged (e.g. single getMasterIndex, single parseAsJson, ...)
+    });
 
     // for every peer, obtain the parts files and merge them into the document
 
@@ -278,7 +279,18 @@ function updateMasterIndex(
                 path: pathFor(document.getID()),
                 fileName: "master-index.json",
                 contents: JSON.stringify(masterIndex)
-            }).then(() => masterIndex);
+            }).then(async (savedFile) => {
+                // if the file was published at a new url, save it again with that url embedded
+                if (masterIndex.url !== savedFile.url) {
+                    masterIndex.url = savedFile.url;
+                    await store.putFile({
+                        path: pathFor(document.getID()),
+                        fileName: "master-index.json",
+                        contents: JSON.stringify(masterIndex)
+                    });
+                }
+                return masterIndex;
+            });
         });
 }
 
@@ -288,6 +300,15 @@ export function getClientIndex(documentID: ObjectID, clientID: ClientID, store: 
         fileName: "client-index.json"
     }).then((file) =>
         parseJsonAs(file, ObjectDataType.ClientIndex) as ClientIndex);
+}
+
+export function getRemoteFile(url: string, stores: RemoteStore[]): Promise<string> {
+    for (const store of stores) {
+        if (store.canDownloadUrl(url)) {
+            return store.downloadUrl(url);
+        }
+    }
+    return Promise.reject(new Error("no compatible store"));
 }
 
 function fileKnownAs(json: any, dataType: ObjectDataType): boolean {
@@ -353,7 +374,8 @@ function newMasterIndex(document: Document): MasterIndex {
         label: null,
         clients: {},
         peers: [],
-        latestUpdate: null
+        latestUpdate: null,
+        url: null
     };
 }
 

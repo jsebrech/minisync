@@ -10,6 +10,13 @@ export interface FileHandle {
     fileName: string;
 }
 /**
+ * A descriptor for a published file in a remote store
+ */
+export interface RemoteFileHandle extends FileHandle {
+    /** the published url of a file */
+    url: string;
+}
+/**
  * The data and metadata for a file in a store
  */
 export interface FileData extends FileHandle {
@@ -30,8 +37,6 @@ export interface Store {
     putFile(file: FileData): Promise<FileHandle>;
     /** Download a file from a store, returns null if no such file exists */
     getFile(file: FileHandle): Promise<FileData>;
-    /** List the files in a store's folder */
-    listFiles(path: string[]): Promise<FileHandle[]>;
 }
 
 /**
@@ -41,8 +46,8 @@ export interface Store {
  * and with clients of other users.
  */
 export interface RemoteStore extends Store {
-    /** Create a public URL for a file */
-    publishFile(file: FileHandle): Promise<string>;
+    /** Upload a file to a store and publish it */
+    putFile(file: FileData): Promise<RemoteFileHandle>;
     /** Detects whether the given URL can be downloaded by this store */
     canDownloadUrl(url: string): boolean;
     /** Downloads the given URL and returns the enclosed data */
@@ -95,6 +100,15 @@ export interface MasterIndex {
     peers: RemotePeer[];
     /** This file was last updated by this client */
     latestUpdate: LatestUpdate;
+    /** The url where this master index is published */
+    url: string;
+}
+/**
+ * The master index appended with its published url
+ */
+export interface RemoteMasterIndex extends MasterIndex {
+    /** the url where the master index is published */
+    url: string;
 }
 
 /**
@@ -113,6 +127,15 @@ export interface ClientIndex {
     clientName: string;
     /** the data parts that are saved for this client */
     parts: ClientIndexPart[];
+}
+/**
+ * The client index appended with its published url and that of its master index
+ */
+export interface RemoteClientIndex extends ClientIndex {
+    /** the url where the client index is published */
+    url: string;
+    /** url of the master index */
+    masterIndexUrl: string;
 }
 
 export interface ClientIndexPart {

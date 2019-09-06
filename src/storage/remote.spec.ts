@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as minisync from "../minisync";
 import { MemoryStore } from "./memorystore";
 import { createFromRemote, createFromUrl, getClientIndex, getMasterIndex,
-    mergeFromRemoteClients, publishRemote, saveRemote } from "./remote";
+    mergeFromRemoteClients, saveRemote } from "./remote";
 
 const expect = chai.expect;
 
@@ -220,10 +220,8 @@ describe("minisync storage", () => {
             client1.set("foo[1]", "B");
             // vreates another parts file, containing only B
             const clientIndex = await saveRemote(client1, store, { partSizeLimit: 1 });
-            // publish the master index
-            const url = await publishRemote(client1.getID(), store);
             // construct a new client from the published url
-            const client2 = await createFromUrl(url, [store]);
+            const client2 = await createFromUrl(clientIndex.masterIndexUrl, [store]);
             expect(client2.getData()).to.eql(client1.getData());
         });
     });

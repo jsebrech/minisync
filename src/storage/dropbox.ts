@@ -1,5 +1,5 @@
 import { Dropbox } from "dropbox";
-import { FileData, FileHandle, RemoteStore } from "./types";
+import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "./types";
 
 export class DropboxStore implements RemoteStore {
 
@@ -14,15 +14,18 @@ export class DropboxStore implements RemoteStore {
         readonly rootFolder: string = "minisync",
         readonly response?: typeof Response) { }
 
-    public putFile(file: FileData): Promise<FileHandle> {
+    public putFile(file: FileData): Promise<RemoteFileHandle> {
         return this.dropbox.filesUpload({
             path: this.pathToString(file.path) + file.fileName,
             contents: file.contents,
             mode: { ".tag": "overwrite" }
-        }).then((s: any) => ({
-            path: file.path,
-            fileName: file.fileName
-        }));
+        }).then(async (s: any) => {
+            return {
+                path: file.path,
+                fileName: file.fileName,
+                url: await this.publishFile(file)
+            };
+        });
     }
 
     public getFile(file: FileHandle): Promise<FileData> {
@@ -64,13 +67,6 @@ export class DropboxStore implements RemoteStore {
             });
     }
 
-    /** Create a public URL for a file */
-    public publishFile(file: FileHandle): Promise<string> {
-        return this.dropbox.sharingCreateSharedLink({
-            path: this.pathToString(file.path) + file.fileName
-        }).then((meta) => meta.url);
-    }
-
     /** Detects whether the given URL can be downloaded by this store */
     public canDownloadUrl(url: string): boolean {
         return /^https:\/\/www\.dropbox\.com/.test(url);
@@ -82,6 +78,13 @@ export class DropboxStore implements RemoteStore {
             (res: DropboxTypes.sharing.SharedLinkMetadataReference) => {
                 return this.dataFromFileMeta(res);
             });
+    }
+
+    /** Create a public URL for a file */
+    private publishFile(file: FileHandle): Promise<string> {
+        return this.dropbox.sharingCreateSharedLink({
+            path: this.pathToString(file.path) + file.fileName
+        }).then((meta) => meta.url);
     }
 
     /**
