@@ -3,6 +3,8 @@ import {ChangesObject, ClientID} from "./types";
 import * as uid from "./uid";
 
 // TODO: P2P communication mechanism (default implementation)
+// TODO: proper logging and progress mechanism
+// TODO: support multiple stores of the same type (e.g. two dropbox stores)
 
 // Public API
 

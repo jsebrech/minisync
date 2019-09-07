@@ -45,7 +45,7 @@ export class IndexedDBStore implements Store {
     private static canUseIDB(): boolean {
         if (!this.getIDB()) return false;
 
-        // IE mobile advertises itself as safari, test for openDatabase to check for real safari
+        // mobile IE advertises itself as safari, test for openDatabase to check for real safari
         const isSafari = typeof openDatabase !== "undefined" &&
             /(Safari|iPhone|iPad|iPod)/.test(navigator.userAgent) &&
             !/Chrome/.test(navigator.userAgent) &&

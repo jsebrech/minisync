@@ -2,7 +2,7 @@ import { Document } from "../document";
 import { ClientID, dateToString, ObjectDataType, ObjectID, padStr } from "../types";
 import { ClientIndex, FileData, FileHandle, MasterIndex, RemoteClientIndex, RemoteStore } from "./types";
 
-// remote syncing API
+// Syncing documents to remote stores
 
 // 1 MB
 const DEFAULT_PART_SIZE_LIMIT = 1024 * 1024;
@@ -66,7 +66,6 @@ export function saveRemote(
                     contents: dataStr
                 }).then(async (remotePartFile) => {
                     writeToPart.url = remotePartFile.url;
-                    const remoteClientIndex = Object.assign({}, clientIndex);
                     // update the client index and master index
                     clientIndex.latest = writeToPart.toVersion;
                     clientIndex.updated = dateToString(new Date());
@@ -78,10 +77,8 @@ export function saveRemote(
                     });
                     const masterIndexFile =
                         await updateMasterIndex(document, clientIndex, clientIndexFile.url, store);
-                    return Object.assign(
-                        { url: clientIndexFile.url, masterIndexUrl: masterIndexFile.url},
-                        clientIndex
-                    );
+                    return { ...clientIndex,
+                             url: clientIndexFile.url, masterIndexUrl: masterIndexFile.url };
                 });
             } else return null;
         });
@@ -179,44 +176,18 @@ export async function mergeFromRemoteClients(document: Document, store: RemoteSt
     const clientStates = document.getClientStates();
 
     // filter to those clients we need to sync with (are newer than we've synced with)
-    // note: we don't download the client indexes here, even though the master index may be out of date
-    // because it would slow us down a lot and this circumstance should be rare and fix itself on the next sync.
     const clients = Object.entries(masterIndex.clients).filter(([clientID, client]) => {
         const previous = clientStates.find((s) => s.clientID === clientID);
         return !previous || (previous.lastReceived < client.lastReceived);
     }).map((v) => v[0]);
 
-    // for every client, obtain the parts files
-    const changes = await Promise.all(
-        // fetch in parallel
-        clients.map(async (clientID) => {
-            const clientIndex = await getClientIndex(document.getID(), clientID, store);
-            const previous = clientStates.find((s) => s.clientID === clientIndex.clientID);
-            const parts =
-                clientIndex.parts.filter((part) => (!previous) || (previous.lastReceived < part.toVersion));
-            const files = await Promise.all(
-                // fetch in parallel
-                parts.map((part) => store.getFile({
-                    path: pathFor(document.getID(), clientID),
-                    fileName: "part-" + padStr(String(part.id), 8) + ".json"
-                }))
-            );
-            // for this client, we must merge these change parts
-            return {
-                clientIndex,
-                parts: files
-            };
-        })
-    );
+    // fetch client indexes for those clients in parallel
+    // note: we download only a subset of client indexes here, even though the master index may be out of date
+    // (mid-update) because it would slow us down a lot and it should fix itself on the next sync.
+    const clientIndexes =
+        await Promise.all(clients.map((clientID) => getClientIndex(document.getID(), clientID, store)));
 
-    // merge all the parts into the document, sequentially by client, and then by part
-    for (const change of changes) {
-        for (const part of change.parts) {
-            document.mergeChanges(JSON.parse(part.contents));
-        }
-    }
-
-    return document;
+    return mergeClients(document, clientIndexes, [store]);
 }
 
 /**
@@ -229,23 +200,35 @@ export async function mergeFromRemoteClients(document: Document, store: RemoteSt
 export async function mergeFromRemotePeers(
     document: Document, myStore: RemoteStore, allStores: RemoteStore[]
 ): Promise<Document> {
-    // TODO: implement mergeFromRemotePeers
+    const myMasterIndex = await getMasterIndex(document.getID(), myStore);
 
     // construct the list of peers to obtain changes from (from masterindex)
-    const masterIndex = await getMasterIndex(document.getID(), myStore);
-
     // filter to those peers we need to sync with (are newer than we've synced with)
     // and can sync with (actually responds when we try to fetch their master index)
-    const peers = masterIndex.peers.map(async (peer) => {
-        const masterIndex = getRemoteFile(peer.url, allStores);
-        // TODO: parse as json
-        // basic problem outline: FileHandle and url are different things, but should be the same
-        // then the client and peer paths can be merged (e.g. single getMasterIndex, single parseAsJson, ...)
-    });
+    const peers: MasterIndex[] = (await Promise.all(myMasterIndex.peers.map((peer) =>
+        getRemoteFile(peer.url, allStores)
+            .then((file) => parseJsonAs(file, ObjectDataType.MasterIndex) as MasterIndex)
+            .then((theirMasterIndex) => {
+                if (theirMasterIndex.latestUpdate.updated > myMasterIndex.latestUpdate.updated) {
+                    return theirMasterIndex;
+                }
+            })
+            .catch((e) => null) // ignore any master index we couldn't fetch
+    ))).filter((s) => !!s); // remove nulls
 
-    // for every peer, obtain the parts files and merge them into the document
+    // for every peer, obtain the client index for the latest updated client of that peer
+    // (this should already contain the clientState of the clients we know)
+    // as well as the parts files and merge them into the document
+    const clientIndexes: ClientIndex[] = (await Promise.all(peers.map((peer) => {
+        const client = peer.clients[peer.latestUpdate.clientID];
+        return getRemoteFile(client.url, allStores)
+            .then((file) => parseJsonAs(file, ObjectDataType.ClientIndex) as ClientIndex)
+            .catch((e) => null); // ignore any client index we couldn't fetch
+    }))).filter((s) => !!s); // remove nulls
 
-    return Promise.reject(new Error("not yet implemented"));
+    return mergeClients(document, clientIndexes, allStores);
+
+    // TODO: test mergeFromRemotePeers
 }
 
 export function getMasterIndex(documentID: ObjectID, store: RemoteStore): Promise<MasterIndex> {
@@ -254,6 +237,46 @@ export function getMasterIndex(documentID: ObjectID, store: RemoteStore): Promis
         fileName: "master-index.json"
     }).then((file) =>
         parseJsonAs(file, ObjectDataType.MasterIndex) as MasterIndex);
+}
+
+/**
+ * Merge a series of remote clients into a document
+ * @param document The document to merge the client data into
+ * @param clientIndexes The data for the clients to merge
+ * @param stores The stores to try to fetch client data through
+ * @return The document with the merged changes
+ */
+async function mergeClients(
+    document: Document, clientIndexes: ClientIndex[], stores: RemoteStore[]): Promise<Document> {
+    const clientStates = document.getClientStates();
+
+    const changes = await Promise.all(clientIndexes.map(async (clientIndex) => {
+        try {
+            const previous = clientStates.find((s) => s.clientID === clientIndex.clientID);
+            const parts =
+                clientIndex.parts.filter((part) => (!previous) || (previous.lastReceived < part.toVersion));
+            const files = await Promise.all(
+                // fetch in parallel
+                parts.map((part) => getRemoteFile(part.url, stores).then(JSON.parse))
+            );
+            // for this client, we must merge these change parts
+            return {
+                clientIndex,
+                parts: files
+            };
+        } catch (e) {
+            return null; // for any error, skip this client
+        }
+    }));
+
+    // merge all the parts into the document, sequentially by client, and then by part
+    for (const change of changes) {
+        for (const part of change.parts) {
+            document.mergeChanges(part);
+        }
+    }
+
+    return document;
 }
 
 function updateMasterIndex(
@@ -315,9 +338,9 @@ function fileKnownAs(json: any, dataType: ObjectDataType): boolean {
     return (json && json._minisync && (json._minisync.dataType === dataType));
 }
 
-function parseJsonAs(file: FileData, dataType: ObjectDataType) {
+function parseJsonAs<T>(file: FileData|string, dataType: ObjectDataType): T {
     if (file === null) return null;
-    const result = JSON.parse(file.contents);
+    const result = JSON.parse(typeof file === "string" ? file : file.contents);
     if (!fileKnownAs(result, dataType)) {
         switch (dataType) {
             case ObjectDataType.ClientIndex:
@@ -328,7 +351,7 @@ function parseJsonAs(file: FileData, dataType: ObjectDataType) {
                 throw errorFor(file, "unrecognized type: " + dataType);
         }
     }
-    return result;
+    return result as T;
 }
 
 function pathFor(documentID: ObjectID, clientID?: ClientID): string[] {
@@ -339,9 +362,10 @@ function pathFor(documentID: ObjectID, clientID?: ClientID): string[] {
     return path;
 }
 
-function errorFor(handle: FileHandle, message: string): Error {
+function errorFor(handle: FileHandle|string, message: string): Error {
     return new Error("Error at " +
-        handle.path.concat(handle.fileName).filter((s: any) => s).join("/") +
+        ((typeof handle === "string") ? handle :
+            [].concat(handle.path, [handle.fileName]).filter((s: any) => s).join("/")) +
         (message ? ": " + message : ""));
 }
 
