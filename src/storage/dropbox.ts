@@ -68,8 +68,14 @@ export class DropboxStore implements RemoteStore {
     }
 
     /** Detects whether the given URL can be downloaded by this store */
-    public canDownloadUrl(url: string): boolean {
-        return /^https:\/\/www\.dropbox\.com/.test(url);
+    public canDownloadUrl(url: string): Promise<boolean> {
+        if (/^https:\/\/www\.dropbox\.com/.test(url)) {
+            return this.dropbox.sharingGetSharedLinkMetadata({ url }).then(
+                (res: DropboxTypes.sharing.SharedLinkMetadataReference) => {
+                    return !!res;
+                }
+            ).catch((e) => false);
+        } else return Promise.resolve(false);
     }
 
     /** Downloads the given URL and returns the enclosed data */

@@ -107,17 +107,14 @@ describe("minisync storage", () => {
             });
         });
 
-        it("should publish and download public files", function(done) {
+        it("should publish and download public files", async function() {
             this.timeout(7000);
-            store.putFile({ path: ["path"], fileName: "file", contents: "foo"}).then(async (file) => {
-                const url = file.url;
-                expect(typeof url).to.equal("string");
-                expect(store.canDownloadUrl(url)).to.equal(true);
-                store.downloadUrl(url).then((data) => {
-                    expect(data).to.equal("foo");
-                    done();
-                }).catch((e) => done(new Error(e)));
-            }).catch((e) => done(new Error(e)));
+            const file = await store.putFile({ path: ["path"], fileName: "file", contents: "foo"});
+            const url = file.url;
+            expect(typeof url).to.equal("string");
+            expect(await store.canDownloadUrl(url)).to.equal(true);
+            const data = await store.downloadUrl(url);
+            expect(data).to.equal("foo");
         });
 
     });

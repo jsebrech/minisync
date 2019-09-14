@@ -49,7 +49,7 @@ export interface RemoteStore extends Store {
     /** Upload a file to a store and publish it */
     putFile(file: FileData): Promise<RemoteFileHandle>;
     /** Detects whether the given URL can be downloaded by this store */
-    canDownloadUrl(url: string): boolean;
+    canDownloadUrl(url: string): Promise<boolean>;
     /** Downloads the given URL and returns the enclosed data */
     downloadUrl(url: string): Promise<string>;
 }

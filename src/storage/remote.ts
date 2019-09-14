@@ -125,7 +125,10 @@ export function createFromRemote(
  * @return A promise for a new Document instance, which is rejected if it is unable to restore from that url
  */
 export async function createFromUrl(url: string, stores: RemoteStore[]): Promise<Document> {
-    const store = stores.find((store) => store.canDownloadUrl(url));
+    const store = (await Promise.all(
+        // call out to the stores in parallel to figure out which one can download this
+        stores.map((store) => ({ store, canDownload: store.canDownloadUrl(url) }))
+    )).filter((o) => o.canDownload).map((o) => o.store)[0];
     if (store) {
         // get their master index
         const masterIndex: MasterIndex = await store.downloadUrl(url)

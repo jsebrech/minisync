@@ -56,8 +56,10 @@ export class MemoryStore implements RemoteStore {
         return Promise.resolve(result);
     }
 
-    public canDownloadUrl(url: string): boolean {
-        return /^data\:text/.test(url);
+    public canDownloadUrl(url: string): Promise<boolean> {
+        if (/^data\:text/.test(url)) {
+            return this.downloadUrl(url).then((res) => !!res);
+        } else return Promise.resolve(false);
     }
 
     public downloadUrl(url: string): Promise<string> {

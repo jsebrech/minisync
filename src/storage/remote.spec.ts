@@ -281,8 +281,8 @@ class TestStore extends MemoryStore {
         });
     }
 
-    public canDownloadUrl(url: string): boolean {
-        return /^test\:/.test(url);
+    public canDownloadUrl(url: string): Promise<boolean> {
+        return Promise.resolve(/^test\:/.test(url));
     }
 
     public downloadUrl(url: string): Promise<string> {
