@@ -52,6 +52,25 @@ export interface ClientState {
     lastReceived: Version;
 }
 
+export interface LatestUpdate {
+    /** the client ID for a client latest update info (something we have or will sync with) */
+    clientID: ClientID;
+    /** the timestamp that latest update was generated */
+    updated: Timestamp;
+    /** the version of that latest update */
+    version: Version;
+}
+
+/** Description of a peer (user that shares a document) */
+export interface Peer {
+    /** URL to the master index of that peer */
+    url: string;
+    /** The metadata for the last sync with this peer */
+    latestUpdate: LatestUpdate;
+    /** Human-visible description of this peer (copied from their master index) */
+    label: string;
+}
+
 /** State of a Syncable object, array or Document */
 export interface State {
     /** Unique id of this object as known to all peers */
@@ -75,6 +94,8 @@ export interface DocumentState extends State {
     clientID?: ClientID;
     /** version-tracking for the versions known by remote clients */
     remote?: ClientState[];
+    /** list of known peers we sync with */
+    peers?: Peer[];
 }
 
 export interface ArrayRemovedObject {

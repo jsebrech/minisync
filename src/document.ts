@@ -1,11 +1,13 @@
 import * as base64 from "./base64";
 import {Syncable} from "./syncable";
-import {ChangesObject, ClientID, ClientState, DocumentState, isArray, ObjectDataType, Version} from "./types";
+import {ChangesObject, ClientID, ClientState, DocumentState,
+        isArray, LatestUpdate, ObjectDataType, Peer, Version} from "./types";
 import * as uid from "./uid";
 
 /**
- * Represents a single syncable document (top-level JSON object or array)
+ * Represents a single syncable document (top-level JSON object or array).
  * Keeps track of client state for this document across all the clients.
+ *
  * The Document is composed out of Syncable instances (wrappers around objects or arrays),
  * and primitive values. It can be nested arbitrarily deep, but all Syncables link back to the master Document.
  */
@@ -120,6 +122,31 @@ export class Document extends Syncable {
     }
 
     /**
+     * Return an array of known peers that we sync with
+     */
+    public getPeers(): Peer[] {
+        const state: DocumentState = this.getState();
+        if (!state.peers) state.peers = [];
+        return state.peers;
+    }
+
+    /**
+     * Add or update a peer in the list of peers
+     * @param peer The new peer info
+     */
+    public addPeer(peer: Peer) {
+        // clean up the data object (might be a master index)
+        peer = { url: peer.url, latestUpdate: peer.latestUpdate, label: peer.label};
+        const peers = this.getPeers();
+        const index = peers.findIndex((item) => item.url === peer.url);
+        if (index >= 0) {
+            peers[index] = peer;
+        } else {
+            peers.push(peer);
+        }
+    }
+
+    /**
      * Get updates to send to a remote client
      * @param {String} [clientID] Unique ID string for the remote client to get a delta update.
      * Leave empty to generate a universal state object containing the whole document
@@ -208,6 +235,23 @@ export class Document extends Syncable {
             }
         } else {
             throw new Error("Invalid changes object");
+        }
+    }
+
+    /**
+     * Is this document newer than the latest update of another client?
+     * @param otherUpdate The other client's latest update
+     */
+    public isNewerThan(otherUpdate: LatestUpdate): boolean {
+        // crossed wires, assume we're older
+        if (!otherUpdate) return false;
+        const clientState = this.getClientState(otherUpdate.clientID);
+        // we've never received a version from them, so assume we're older
+        if (!clientState.lastReceived) {
+            return false;
+        // we have received a version from them, compare against that
+        } else {
+            return clientState.lastReceived >= otherUpdate.version;
         }
     }
 

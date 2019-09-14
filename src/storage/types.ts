@@ -1,4 +1,4 @@
-import { ChangesObjectVersion, ClientID, Timestamp, Version } from "../types";
+import { ChangesObjectVersion, ClientID, Peer, Timestamp, Version } from "../types";
 
 /**
  * A descriptor for a file in a store
@@ -40,8 +40,8 @@ export interface Store {
 }
 
 /**
- * Storage plugins that are able to share files on the internet
- * should implement this API instead. Only RemoteStore instances
+ * Storage plugins that are able to publish files on the internet
+ * should implement this API. Only RemoteStore instances
  * can be used to share minisync documents between clients of the same user,
  * and with clients of other users.
  */
@@ -69,46 +69,16 @@ export interface RemoteClients {
     [key: string]: RemoteClient;
 }
 
-export interface LatestUpdate {
-    /** the client ID that was synced with */
-    clientID: ClientID;
-    /** the timestamp that the version we synced with was generated */
-    updated: Timestamp;
-}
-
-/** Description of another peer (user that shares a document with us) */
-export interface RemotePeer {
-    /** URL to the master index of that peer */
-    url: string;
-    /** The timestamp that we last synced with this peer */
-    latestUpdate: LatestUpdate;
-    /** Human-visible description of this peer (copied from their master index) */
-    label: string;
-}
-
 /**
  * Master index of all client representations of a document, as kept in a remote store
  */
-export interface MasterIndex {
+export interface MasterIndex extends Peer {
     /** file format identifier */
     _minisync: ChangesObjectVersion;
-    /** Human-visible description of this peer */
-    label: string;
     /** List of all the clients of this peer */
     clients: RemoteClients;
     /** List of all the other peers' clients this peer knows */
-    peers: RemotePeer[];
-    /** This file was last updated by this client */
-    latestUpdate: LatestUpdate;
-    /** The url where this master index is published */
-    url: string;
-}
-/**
- * The master index appended with its published url
- */
-export interface RemoteMasterIndex extends MasterIndex {
-    /** the url where the master index is published */
-    url: string;
+    peers: Peer[];
 }
 
 /**

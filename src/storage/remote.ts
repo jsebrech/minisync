@@ -1,5 +1,5 @@
 import { Document } from "../document";
-import { ClientID, dateToString, ObjectDataType, ObjectID, padStr } from "../types";
+import { ClientID, dateToString, ObjectDataType, ObjectID, padStr, Peer } from "../types";
 import { ClientIndex, FileData, FileHandle, MasterIndex, RemoteClientIndex, RemoteStore } from "./types";
 
 // Syncing documents to remote stores
@@ -124,42 +124,37 @@ export function createFromRemote(
  * @param stores The set of remote stores to try downloading it through (first one that matches will download)
  * @return A promise for a new Document instance, which is rejected if it is unable to restore from that url
  */
-export function createFromUrl(url: string, stores: RemoteStore[]): Promise<Document> {
+export async function createFromUrl(url: string, stores: RemoteStore[]): Promise<Document> {
     const store = stores.find((store) => store.canDownloadUrl(url));
     if (store) {
         // get their master index
-        return store.downloadUrl(url)
+        const masterIndex: MasterIndex = await store.downloadUrl(url)
             .then((file) => parseJsonAs(
                 { path: [], fileName: url, contents: file},
                 ObjectDataType.MasterIndex
-            ) as MasterIndex)
-            // then get the most recently updated client's index
-            .then(async (masterIndex) => {
-                const client = masterIndex.clients[masterIndex.latestUpdate.clientID];
-                if (!client) {
-                    return Promise.reject(new Error(
-                        `unable to parse master index at ${url}, latest updated client not found`));
-                }
-                return store.downloadUrl(client.url)
-                    .then((file) => parseJsonAs(
-                        { path: [], fileName: client.url, contents: file},
-                        ObjectDataType.ClientIndex
-                    ) as ClientIndex);
-            })
-            // get that client's data parts (changes object files)
-            .then(async (clientIndex) => {
-                const files = await Promise.all(
-                    // fetch in parallel
-                    clientIndex.parts.map((part) => store.downloadUrl(part.url))
-                );
-                // for this client, we must merge these change parts
-                return {
-                    clientIndex,
-                    parts: files
-                };
-            })
-            // and restore a document from those parts
-            .then(documentFromClientData);
+            ));
+        masterIndex.url = url;
+        const client = masterIndex.clients[masterIndex.latestUpdate.clientID];
+        if (!client) {
+            return Promise.reject(new Error(
+                `unable to parse master index at ${url}, latest updated client not found`));
+        }
+        const clientIndex: ClientIndex =
+            await store.downloadUrl(client.url)
+            .then((file) => parseJsonAs(
+                { path: [], fileName: client.url, contents: file},
+                ObjectDataType.ClientIndex
+            ));
+        const files = await Promise.all(
+            // fetch in parallel
+            clientIndex.parts.map((part) => store.downloadUrl(part.url))
+        );
+        // for this client, we must merge these change parts
+        // and restore a document from those parts
+        return documentFromClientData({
+            clientIndex,
+            parts: files
+        }, null, masterIndex);
     }
     return Promise.reject(new Error(`unable to download ${url} as a document`));
 }
@@ -209,9 +204,8 @@ export async function mergeFromRemotePeers(
         getRemoteFile(peer.url, allStores)
             .then((file) => parseJsonAs(file, ObjectDataType.MasterIndex) as MasterIndex)
             .then((theirMasterIndex) => {
-                if (theirMasterIndex.latestUpdate.updated > myMasterIndex.latestUpdate.updated) {
-                    return theirMasterIndex;
-                }
+                // have we already seen this version, then ignore it, otherwise sync with it
+                return document.isNewerThan(theirMasterIndex.latestUpdate) ? null : theirMasterIndex;
             })
             .catch((e) => null) // ignore any master index we couldn't fetch
     ))).filter((s) => !!s); // remove nulls
@@ -227,8 +221,6 @@ export async function mergeFromRemotePeers(
     }))).filter((s) => !!s); // remove nulls
 
     return mergeClients(document, clientIndexes, allStores);
-
-    // TODO: test mergeFromRemotePeers
 }
 
 export function getMasterIndex(documentID: ObjectID, store: RemoteStore): Promise<MasterIndex> {
@@ -296,8 +288,10 @@ function updateMasterIndex(
             };
             masterIndex.latestUpdate = {
                 clientID: clientIndex.clientID,
-                updated: clientIndex.updated
+                updated: clientIndex.updated,
+                version: clientIndex.latest
             };
+            masterIndex.peers = document.getPeers();
             return store.putFile({
                 path: pathFor(document.getID()),
                 fileName: "master-index.json",
@@ -408,7 +402,9 @@ interface ClientData {
     parts: string[];
 }
 
-function documentFromClientData(changes: ClientData, forClientID ?: ObjectID): Document {
+function documentFromClientData(
+    changes: ClientData, forClientID ?: ObjectID, fromPeer ?: Peer
+): Document {
     const parts = changes.parts.slice();
     if (parts.length) {
         const document = new Document(
@@ -416,6 +412,7 @@ function documentFromClientData(changes: ClientData, forClientID ?: ObjectID): D
         for (const part of parts) {
             document.mergeChanges(JSON.parse(part));
         }
+        if (fromPeer) document.addPeer(fromPeer);
         return document;
     }
     throw new Error("unable to restore documents, no changes data to restore from");

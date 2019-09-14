@@ -3,7 +3,8 @@ import * as sinon from "sinon";
 import * as minisync from "../minisync";
 import { MemoryStore } from "./memorystore";
 import { createFromRemote, createFromUrl, getClientIndex, getMasterIndex,
-    mergeFromRemoteClients, saveRemote } from "./remote";
+    mergeFromRemoteClients, mergeFromRemotePeers, saveRemote } from "./remote";
+import { FileData, RemoteFileHandle } from "./types";
 
 const expect = chai.expect;
 
@@ -224,5 +225,71 @@ describe("minisync storage", () => {
             const client2 = await createFromUrl(clientIndex.masterIndexUrl, [store]);
             expect(client2.getData()).to.eql(client1.getData());
         });
+
+        it("merges from remote peers", async () => {
+            const peer1 = new TestStore();
+            const peer2 = new TestStore();
+            const client1 = minisync.from({foo: ["A"]});
+            const published = await saveRemote(client1, peer1);
+
+            // should be identical
+            const client2 = await createFromUrl(published.masterIndexUrl, [peer2]);
+            expect(client2.get("foo").getData()).to.eql(["A"]);
+            const client2Index = await saveRemote(client2, peer2);
+            const peer2Index = await getMasterIndex(client2.getID(), peer2);
+
+            // make client1 aware of the other peer
+            client1.addPeer({
+                url: client2Index.masterIndexUrl,
+                latestUpdate: peer2Index.latestUpdate,
+                label: peer2Index.label
+            });
+
+            client1.set("foo[1]", "B");
+            await saveRemote(client1, peer1);
+            // will merge the updated part data from peer1
+            await mergeFromRemotePeers(client2, peer2, [peer2]);
+            expect(client2.get("foo").getData()).to.eql(["A", "B"]);
+
+            // now reverse direction and add C from client2 into client1
+            client2.set("foo[2]", "C"),
+            await saveRemote(client2, peer2);
+            await mergeFromRemotePeers(client1, peer1, [peer1]);
+            expect(client1.get("foo").getData()).to.eql(["A", "B", "C"]);
+        });
+
     });
 });
+
+/** A memory store which allows updating content behind static url's */
+class TestStore extends MemoryStore {
+    private static stores: TestStore[] = [];
+
+    public id: number;
+
+    constructor(readonly files: any = {}) {
+        super(files);
+        this.id = TestStore.stores.length;
+        TestStore.stores[this.id] = this;
+    }
+
+    public putFile(file: FileData): Promise<RemoteFileHandle> {
+        return super.putFile(file).then((handle) => {
+            handle.url = "test://" + this.id + "/" +
+                file.path.join("/") + "/" + file.fileName;
+            return handle;
+        });
+    }
+
+    public canDownloadUrl(url: string): boolean {
+        return /^test\:/.test(url);
+    }
+
+    public downloadUrl(url: string): Promise<string> {
+        const path = url.substr("test://".length).split("/");
+        const fileName = path.pop();
+        const storeId = parseInt(path.shift(), 10);
+        const store = TestStore.stores[storeId];
+        return store.getFile({ path, fileName }).then((file) => file.contents);
+    }
+ }
