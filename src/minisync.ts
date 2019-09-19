@@ -1,8 +1,8 @@
 import {Document} from "./document";
+import * as storage from "./storage";
 import {ChangesObject, ClientID} from "./types";
 import * as uid from "./uid";
 
-// TODO: P2P communication mechanism (default implementation)
 // TODO: proper logging and progress mechanism
 
 // Public API
@@ -33,3 +33,6 @@ export function createID(): ClientID {
 export function restore(data: ChangesObject): Document {
   return from(data, true);
 }
+
+// the local and remote storage api's
+export { storage };

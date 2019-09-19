@@ -147,8 +147,8 @@ https://github.com/localForage/localForage/blob/master/src/utils/isIndexedDBVali
 Todo
 ----
 
-- implement `storage.saveRemote` / `storage.mergeRemote`, make it work with a mock storage provider
 - implement `minisync.fromUrl` to start a new local document from a remote minisync document
   - what if it already exists locally? should have a way of obtaining the document id only and checking
   - what if it already exists in a remote store? how to avoid conflicts if users recreate the document on a new device?
 - implement `document.downloadChanges` to connect to other remote clients and download their changes
+- logging and progress: turn local.ts and remote.ts into proper classes, inject a logging framework, make them send progress events

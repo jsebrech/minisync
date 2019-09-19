@@ -1,4 +1,4 @@
-import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "./types";
+import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "../types";
 
 const DATA_URI_PREFIX = "data:text/plain;base64,";
 

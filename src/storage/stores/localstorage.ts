@@ -1,4 +1,4 @@
-import { FileData, FileHandle, Store } from "./types";
+import { FileData, FileHandle, Store } from "../types";
 
 export class LocalStorageStore implements Store {
     constructor(readonly prefix: string = "minisync") { }

@@ -4,7 +4,7 @@ export * from "./local";
 // syncing to remote stores
 export * from "./remote";
 // stores
-export * from "./localstorage";
-export * from "./indexeddb";
-export * from "./dropbox";
-export * from "./memorystore";
+export * from "./stores/localstorage";
+export * from "./stores/indexeddb";
+export * from "./stores/dropbox";
+export * from "./stores/memorystore";

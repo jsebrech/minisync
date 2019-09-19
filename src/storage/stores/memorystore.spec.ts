@@ -1,6 +1,6 @@
 import * as chai from "chai";
-import * as storage from "./index";
-import { MemoryStore } from "./index";
+import * as storage from "../index";
+import { MemoryStore } from "../index";
 
 const expect = chai.expect;
 

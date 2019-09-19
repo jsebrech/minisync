@@ -1,9 +1,8 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
 import * as minisync from "../minisync";
-import { MemoryStore } from "./memorystore";
-import { createFromRemote, createFromUrl, getClientIndex, getMasterIndex,
-    mergeFromRemoteClients, mergeFromRemotePeers, saveRemote } from "./remote";
+import { RemoteSync } from "./remote";
+import { MemoryStore } from "./stores/memorystore";
 import { FileData, RemoteFileHandle } from "./types";
 
 const expect = chai.expect;
@@ -12,6 +11,7 @@ describe("minisync storage", () => {
     describe("remote sync", () => {
 
         let store: MemoryStore;
+        let sync: RemoteSync;
 
         beforeEach(() => {
             store = new MemoryStore({
@@ -32,17 +32,18 @@ describe("minisync storage", () => {
                     }
                 }
             });
+            sync = new RemoteSync(store);
         });
 
         it("getClientIndex returns the right file", (done) => {
-            getClientIndex("ABC", "FOO", store).then((index) => {
+            sync.getClientIndex("ABC", "FOO").then((index) => {
                 expect(index).to.be.an("object");
                 done();
             }).catch((e) => done(new Error(e)));
         });
 
         it("getMasterIndex returns the right file", (done) => {
-            getMasterIndex("ABC", store).then((index) => {
+            sync.getMasterIndex("ABC").then((index) => {
                 expect(index).to.be.an("object");
                 done();
             }).catch((e) => done(new Error(e)));
@@ -50,9 +51,10 @@ describe("minisync storage", () => {
 
         it("saves to a blank remote store", async () => {
             store = new MemoryStore();
+            sync = new RemoteSync(store);
             const document = minisync.from({foo: ["A"]});
-            await saveRemote(document, store, { clientName: "Bob" });
-            const masterIndex = await getMasterIndex(document.getID(), store);
+            await sync.saveRemote(document, { clientName: "Bob" });
+            const masterIndex = await sync.getMasterIndex(document.getID());
             expect(masterIndex.clients).to.be.an("object");
             expect(masterIndex.latestUpdate).to.be.an("object");
             const clientID = masterIndex.latestUpdate.clientID;
@@ -63,7 +65,7 @@ describe("minisync storage", () => {
             expect(clientEntry.lastReceived).to.be.a("string");
             expect(clientEntry.url).to.match(/^data:/);
 
-            const clientIndex = await getClientIndex(document.getID(), document.getClientID(), store);
+            const clientIndex = await sync.getClientIndex(document.getID(), document.getClientID());
             expect(clientIndex).to.be.an("object");
             expect(clientIndex.clientID).to.equal(clientID);
             expect(clientIndex.clientName).to.equal("Bob");
@@ -91,12 +93,13 @@ describe("minisync storage", () => {
 
         it("appends to an existing part if part is small", async () => {
             store = new MemoryStore();
+            sync = new RemoteSync(store);
             const document = minisync.from({foo: ["A"]});
-            await saveRemote(document, store);
+            await sync.saveRemote(document);
             document.set("foo[1]", "B");
-            await saveRemote(document, store);
+            await sync.saveRemote(document);
 
-            const clientIndex = await getClientIndex(document.getID(), document.getClientID(), store);
+            const clientIndex = await sync.getClientIndex(document.getID(), document.getClientID());
             expect(clientIndex).to.be.an("object");
             expect(clientIndex.parts).to.be.an("array");
             expect(clientIndex.parts.length).to.equal(1);
@@ -119,14 +122,15 @@ describe("minisync storage", () => {
 
         it("starts a new part if the previous part was above the size limit", async () => {
             store = new MemoryStore();
+            sync = new RemoteSync(store);
             const document = minisync.from({foo: ["A"]});
             const firstVersion = document.getDocVersion();
-            await saveRemote(document, store);
+            await sync.saveRemote(document);
             document.set("foo[1]", "B");
             const secondVersion = document.getDocVersion();
-            await saveRemote(document, store, { partSizeLimit: 1 });
+            await sync.saveRemote(document, { partSizeLimit: 1 });
 
-            const clientIndex = await getClientIndex(document.getID(), document.getClientID(), store);
+            const clientIndex = await sync.getClientIndex(document.getID(), document.getClientID());
             expect(clientIndex).to.be.an("object");
             expect(clientIndex.parts).to.be.an("array");
             expect(clientIndex.parts.length).to.equal(2);
@@ -153,7 +157,7 @@ describe("minisync storage", () => {
         it("merges from remote clients", async () => {
             store = new MemoryStore();
             const client1 = minisync.from({foo: ["A"]});
-            await saveRemote(client1, store);
+            await sync.saveRemote(client1);
 
             // should be identical
             const client2 = minisync.from(client1.getChanges());
@@ -161,36 +165,37 @@ describe("minisync storage", () => {
 
             client1.set("foo[1]", "B");
             // vreates another parts file, containing only B
-            await saveRemote(client1, store, { partSizeLimit: 1 });
+            await sync.saveRemote(client1, { partSizeLimit: 1 });
             // will merge the second part from client1
-            await mergeFromRemoteClients(client2, store);
+            await sync.mergeFromRemoteClients(client2);
             expect(client2.get("foo").getData()).to.eql(["A", "B"]);
 
             // now reverse direction and add C from client2 into client1
             client2.set("foo[2]", "C"),
-            await saveRemote(client2, store);
-            await mergeFromRemoteClients(client1, store);
+            await sync.saveRemote(client2);
+            await sync.mergeFromRemoteClients(client1);
             expect(client1.get("foo").getData()).to.eql(["A", "B", "C"]);
         });
 
         it("minimizes remote calls when merging from remote clients", async () => {
             store = new MemoryStore();
+            sync = new RemoteSync(store);
 
             const client1 = minisync.from({foo: ["A"]});
-            await saveRemote(client1, store);
+            await sync.saveRemote(client1);
             const client2 = minisync.from(client1.getChanges());
-            await saveRemote(client2, store);
+            await sync.saveRemote(client2);
             client1.set("foo[1]", "B");
-            await saveRemote(client1, store);
+            await sync.saveRemote(client1);
 
             // merge all changes
-            await mergeFromRemoteClients(client2, store);
+            await sync.mergeFromRemoteClients(client2);
             try {
                 sinon.spy(store, "getFile");
                 // nothing to merge, so we should see only 3 fetches of master-index.json
-                await mergeFromRemoteClients(client2, store);
-                await mergeFromRemoteClients(client2, store);
-                await mergeFromRemoteClients(client2, store);
+                await sync.mergeFromRemoteClients(client2);
+                await sync.mergeFromRemoteClients(client2);
+                await sync.mergeFromRemoteClients(client2);
                 expect((store.getFile as any).callCount).to.equal(3);
                 const args = (store.getFile as any).getCall(2).args;
                 expect(args.length).to.equal(1);
@@ -204,12 +209,12 @@ describe("minisync storage", () => {
             store = new MemoryStore();
 
             const client1 = minisync.from({foo: ["A"]});
-            await saveRemote(client1, store);
+            await sync.saveRemote(client1);
             client1.set("foo[1]", "B");
             // vreates another parts file, containing only B
-            await saveRemote(client1, store, { partSizeLimit: 1 });
+            await sync.saveRemote(client1, { partSizeLimit: 1 });
 
-            const client2 = await createFromRemote(client1.getID(), store);
+            const client2 = await sync.createFromRemote(client1.getID());
             expect(client2.getData()).to.eql(client1.getData());
         });
 
@@ -217,26 +222,29 @@ describe("minisync storage", () => {
             store = new MemoryStore();
 
             const client1 = minisync.from({foo: ["A"]});
-            await saveRemote(client1, store);
+            await sync.saveRemote(client1);
             client1.set("foo[1]", "B");
             // vreates another parts file, containing only B
-            const clientIndex = await saveRemote(client1, store, { partSizeLimit: 1 });
+            const clientIndex = await sync.saveRemote(client1, { partSizeLimit: 1 });
             // construct a new client from the published url
-            const client2 = await createFromUrl(clientIndex.masterIndexUrl, [store]);
+            const client2 = await sync.createFromUrl(clientIndex.masterIndexUrl);
             expect(client2.getData()).to.eql(client1.getData());
         });
 
         it("merges from remote peers", async () => {
             const peer1 = new TestStore();
             const peer2 = new TestStore();
+            const sync1 = new RemoteSync(peer1);
+            const sync2 = new RemoteSync(peer2);
+
             const client1 = minisync.from({foo: ["A"]});
-            const published = await saveRemote(client1, peer1);
+            const published = await sync1.saveRemote(client1);
 
             // should be identical
-            const client2 = await createFromUrl(published.masterIndexUrl, [peer2]);
+            const client2 = await sync2.createFromUrl(published.masterIndexUrl);
             expect(client2.get("foo").getData()).to.eql(["A"]);
-            const client2Index = await saveRemote(client2, peer2);
-            const peer2Index = await getMasterIndex(client2.getID(), peer2);
+            const client2Index = await sync2.saveRemote(client2);
+            const peer2Index = await sync2.getMasterIndex(client2.getID());
 
             // make client1 aware of the other peer
             client1.addPeer({
@@ -246,15 +254,15 @@ describe("minisync storage", () => {
             });
 
             client1.set("foo[1]", "B");
-            await saveRemote(client1, peer1);
+            await sync1.saveRemote(client1);
             // will merge the updated part data from peer1
-            await mergeFromRemotePeers(client2, peer2, [peer2]);
+            await sync2.mergeFromRemotePeers(client2);
             expect(client2.get("foo").getData()).to.eql(["A", "B"]);
 
             // now reverse direction and add C from client2 into client1
             client2.set("foo[2]", "C"),
-            await saveRemote(client2, peer2);
-            await mergeFromRemotePeers(client1, peer1, [peer1]);
+            await sync2.saveRemote(client2);
+            await sync1.mergeFromRemotePeers(client1);
             expect(client1.get("foo").getData()).to.eql(["A", "B", "C"]);
         });
 

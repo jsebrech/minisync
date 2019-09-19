@@ -2,10 +2,10 @@ import * as chai from "chai";
 import { fetch, Response } from "cross-fetch";
 import { Dropbox } from "dropbox";
 
-import * as minisync from "../minisync";
-import { compareObjects, getData } from "../test-utils";
-import * as storage from "./index";
-import { DropboxStore } from "./index";
+import * as minisync from "../../minisync";
+import { compareObjects, getData } from "../../test-utils";
+import * as storage from "../index";
+import { DropboxStore } from "../index";
 
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -96,8 +96,9 @@ describe("minisync storage", () => {
         it("should save and restore a document", function(done) {
             this.timeout(5000);
             const original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
-            storage.saveLocal(original, store).then((documentID) => {
-                return storage.restoreLocal(documentID, store);
+            const sync = new storage.LocalSync(store);
+            sync.saveLocal(original).then((documentID) => {
+                return sync.restoreLocal(documentID);
             }).then((restored) => {
                 compareObjects(getData(original), getData(restored));
                 expect(original.getClientID()).to.equal(restored.getClientID());

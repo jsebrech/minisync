@@ -1,5 +1,5 @@
 import { Dropbox } from "dropbox";
-import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "./types";
+import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "../types";
 
 export class DropboxStore implements RemoteStore {
 

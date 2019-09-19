@@ -1,10 +1,10 @@
 import * as chai from "chai";
 import * as mocha from "mocha";
 
-import * as minisync from "../minisync";
-import { compareObjects, getData } from "../test-utils";
-import * as storage from "./index";
-import { Store } from "./types";
+import * as minisync from "../../minisync";
+import { compareObjects, getData } from "../../test-utils";
+import * as storage from "../index";
+import { Store } from "../types";
 
 // load localstorage shim
 // tslint:disable-next-line:no-var-requires
@@ -59,8 +59,9 @@ describe("minisync storage", () => {
 
         it("should save and restore a document", (done) => {
             const original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
-            storage.saveLocal(original, store).then((documentID) => {
-                return storage.restoreLocal(documentID, store);
+            const sync = new storage.LocalSync(store);
+            sync.saveLocal(original).then((documentID) => {
+                return sync.restoreLocal(documentID);
             }).then((restored) => {
                 compareObjects(getData(original), getData(restored));
                 expect(original.getClientID()).to.equal(restored.getClientID());
