@@ -120,3 +120,9 @@ export interface ClientIndexPart {
     /** size in bytes (indicative) */
     size: number;
 }
+
+/**
+ * Called to indicate the completion of the running operation.
+ * Parameter is 0 to 1.
+ */
+export type ProgressFunction = (completion: number) => void;

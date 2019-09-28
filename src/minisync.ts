@@ -3,7 +3,7 @@ import * as storage from "./storage";
 import {ChangesObject, ClientID} from "./types";
 import * as uid from "./uid";
 
-// TODO: proper logging and progress mechanism
+// TODO: proper logging
 
 // Public API
 

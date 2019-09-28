@@ -1,6 +1,7 @@
 import { Document } from "../document";
 import { ClientID, dateToString, ObjectDataType, ObjectID, padStr, Peer } from "../types";
-import { ClientIndex, FileData, FileHandle, MasterIndex, RemoteClientIndex, RemoteStore } from "./types";
+import { ClientIndex, FileData, FileHandle, MasterIndex, ProgressFunction,
+         RemoteClientIndex, RemoteStore } from "./types";
 
 // 1 MB
 const DEFAULT_PART_SIZE_LIMIT = 1024 * 1024;
@@ -39,6 +40,8 @@ export class RemoteSync {
         return this.getClientIndex(document.getID(), document.getClientID())
             .then((clientIndex: ClientIndex) => {
                 if (!options) options = {};
+                const onProgress = options.onProgress || defaultProgress;
+                onProgress(0.2); // 1 of 5 calls made
                 // if we've never written to this store for this client, create a fresh client index
                 if (!clientIndex) {
                     clientIndex = newClientIndex(document.getClientID(), options.clientName);
@@ -67,6 +70,7 @@ export class RemoteSync {
                         fileName: "part-" + padStr(String(writeToPart.id), 8) + ".json",
                         contents: dataStr
                     }).then(async (remotePartFile) => {
+                        onProgress(0.4); // 2 of 5 calls
                         writeToPart.url = remotePartFile.url;
                         // update the client index and master index
                         clientIndex.latest = writeToPart.toVersion;
@@ -77,6 +81,7 @@ export class RemoteSync {
                             fileName: "client-index.json",
                             contents: JSON.stringify(clientIndex)
                         });
+                        onProgress(0.6); // 3 of 5 calls made
                         const masterIndexFile =
                             await this.updateMasterIndex(document, clientIndex, clientIndexFile.url, this.store);
                         return { ...clientIndex,
@@ -165,9 +170,13 @@ export class RemoteSync {
     /**
      * Merge changes from this user's other clients in a remote store
      * @param document The documet to merge changes into (this is modified by this operation!)
+     * @param ProgressFunction A function called to indicate progress of this operation (optional).
      * @return The document after the changes are applied to it
      */
-    public async mergeFromRemoteClients(document: Document): Promise<Document> {
+    public async mergeFromRemoteClients(
+        document: Document,
+        onProgress: ProgressFunction = defaultProgress
+    ): Promise<Document> {
         // get master index to find a list of our clients
         const masterIndex = await this.getMasterIndex(document.getID());
         const clientStates = document.getClientStates();
@@ -178,23 +187,44 @@ export class RemoteSync {
             return !previous || (previous.lastReceived < client.lastReceived);
         }).map((v) => v[0]);
 
+        // completed network operations
+        let completed = 1;
+        // total operations, includes fetch of getMasterIndex
+        const total = 1 + clients.length;
+        onProgress(0.5 * (completed / total));
         // fetch client indexes for those clients in parallel
         // note: we download only a subset of client indexes here, even though the master index may be out of date
         // (mid-update) because it would slow us down a lot and it should fix itself on the next sync.
         const clientIndexes =
-            await Promise.all(clients.map((clientID) => this.getClientIndex(document.getID(), clientID)));
+            await Promise.all(clients.map(
+                (clientID) => this.getClientIndex(document.getID(), clientID)
+                .then((res) => {
+                    onProgress(++completed / total);
+                    return res;
+                })
+            ));
+        onProgress(0.5);
 
-        return this.mergeClients(document, clientIndexes);
+        return this.mergeClients(document, clientIndexes, undefined,
+            // second part = remaining 50% of work
+            (completion: number) => onProgress(0.5 + 0.5 * completion));
     }
 
     /**
      * Merge changes from other users
      * @param document The document to merge changes into (this is modified by this operation!)
+     * @param onProgress A function called to indicate progress of this operation (optional).
      * @return The document after the changes are applied to it
      */
-    public async mergeFromRemotePeers(document: Document): Promise<Document> {
+    public async mergeFromRemotePeers(
+        document: Document,
+        onProgress: ProgressFunction = defaultProgress
+    ): Promise<Document> {
         const myMasterIndex = await this.getMasterIndex(document.getID());
 
+        let completed = 1; // 1 = fetch of master index
+        let total = (1 + myMasterIndex.peers.length);
+        onProgress(0.25 * (completed / total)); // first part = 25% of work
         // construct the list of peers to obtain changes from (from masterindex)
         // filter to those peers we need to sync with (are newer than we've synced with)
         // and can sync with (actually responds when we try to fetch their master index)
@@ -205,20 +235,33 @@ export class RemoteSync {
                     // have we already seen this version, then ignore it, otherwise sync with it
                     return document.isNewerThan(theirMasterIndex.latestUpdate) ? null : theirMasterIndex;
                 })
+                .then((res) => {
+                    onProgress(0.3 * (++completed / total));
+                    return res;
+                })
                 .catch((e) => null) // ignore any master index we couldn't fetch
         ))).filter((s) => !!s); // remove nulls
 
+        completed = 0;
+        total = peers.length + 1; // include merge operation
+        onProgress(0.25 + 0.25 * (completed / total)); // second part = 25% of work
         // for every peer, obtain the client index for the latest updated client of that peer
         // (this should already contain the clientState of the clients we know)
         // as well as the parts files and merge them into the document
         const clientIndexes: ClientIndex[] = (await Promise.all(peers.map((peer) => {
             const client = peer.clients[peer.latestUpdate.clientID];
             return this.getRemoteFile(client.url, this.allStores)
-                .then((file) => parseJsonAs(file, ObjectDataType.ClientIndex) as ClientIndex)
+                .then((file) => {
+                    onProgress(0.25 + 0.25 * (completed / total));
+                    return parseJsonAs(file, ObjectDataType.ClientIndex) as ClientIndex;
+                })
                 .catch((e) => null); // ignore any client index we couldn't fetch
         }))).filter((s) => !!s); // remove nulls
+        onProgress(0.5);
 
-        return this.mergeClients(document, clientIndexes, this.allStores);
+        return this.mergeClients(document, clientIndexes, this.allStores,
+            // last part = remaining 50% of work
+            (completion: number) => { onProgress(0.5 + 0.5 * completion); });
     }
 
     public getMasterIndex(documentID: ObjectID): Promise<MasterIndex> {
@@ -234,22 +277,35 @@ export class RemoteSync {
      * @param document The document to merge the client data into
      * @param clientIndexes The data for the clients to merge
      * @param stores The stores to try to fetch client data through
+     * @param onProgress A function called to indicate progress of this operation (optional).
      * @return The document with the merged changes
      */
     public async mergeClients(
-        document: Document, clientIndexes: ClientIndex[], stores: RemoteStore[] = [this.store]
+        document: Document,
+        clientIndexes: ClientIndex[],
+        stores: RemoteStore[] = [this.store],
+        onProgress: ProgressFunction = defaultProgress
     ): Promise<Document> {
         const clientStates = document.getClientStates();
+
+        let completedClients = 0;
+        const total = clientIndexes.length + 1; // include merge changes operation
 
         const changes = await Promise.all(clientIndexes.map(async (clientIndex) => {
             try {
                 const previous = clientStates.find((s) => s.clientID === clientIndex.clientID);
                 const parts =
                     clientIndex.parts.filter((part) => (!previous) || (previous.lastReceived < part.toVersion));
+                let completedParts = 0;
                 const files = await Promise.all(
                     // fetch in parallel
-                    parts.map((part) => this.getRemoteFile(part.url, stores).then(JSON.parse))
+                    parts.map((part) => this.getRemoteFile(part.url, stores).then(JSON.parse)
+                        .then((res) => {
+                            onProgress((completedClients + (++completedParts / parts.length)) / total);
+                            return res;
+                        }))
                 );
+                onProgress(++completedClients / total);
                 // for this client, we must merge these change parts
                 return {
                     clientIndex,
@@ -339,7 +395,14 @@ interface SaveRemoteOptions {
     clientName ?: string;
     /** soft limit for the maximum size in bytes of a part saved to a remote store */
     partSizeLimit ?: number;
+    /**
+     * A progress function called to indicate completion while executing.
+     * It is called with a parameter from 0 to 1.
+     */
+    onProgress?: ProgressFunction;
 }
+
+function defaultProgress(completion: number) { /* do nothing */ }
 
 function fileKnownAs(json: any, dataType: ObjectDataType): boolean {
     return (json && json._minisync && (json._minisync.dataType === dataType));
