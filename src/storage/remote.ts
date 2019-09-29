@@ -1,4 +1,5 @@
 import { Document } from "../document";
+import { defaultLogger, Logger } from "../logging";
 import { ClientID, dateToString, ObjectDataType, ObjectID, padStr, Peer } from "../types";
 import { ClientIndex, FileData, FileHandle, MasterIndex, ProgressFunction,
          RemoteClientIndex, RemoteStore } from "./types";
@@ -15,7 +16,9 @@ export class RemoteSync {
         /** the default store where we store documents */
         public readonly store: RemoteStore,
         /** the stores through which documents from peers are downloaded */
-        public readonly allStores: RemoteStore[] = [store]
+        public readonly allStores: RemoteStore[] = [store],
+        /** the logger used for error and debug logging */
+        private logger: Logger = defaultLogger()
     ) { }
 
     /**
@@ -37,10 +40,14 @@ export class RemoteSync {
         document: Document, options?: SaveRemoteOptions
         ): Promise<RemoteClientIndex> {
         // what have we stored before?
+        this.logger.debug(`saveRemote - saving document ${document.getID()}...`);
         return this.getClientIndex(document.getID(), document.getClientID())
             .then((clientIndex: ClientIndex) => {
                 if (!options) options = {};
-                const onProgress = options.onProgress || defaultProgress;
+                const onProgress = (p: number) => {
+                    this.logger.debug(`saveRemote - ${Math.round(p * 100)}% complete`);
+                    (options.onProgress || defaultProgress)(p);
+                };
                 onProgress(0.2); // 1 of 5 calls made
                 // if we've never written to this store for this client, create a fresh client index
                 if (!clientIndex) {
@@ -84,10 +91,14 @@ export class RemoteSync {
                         onProgress(0.6); // 3 of 5 calls made
                         const masterIndexFile =
                             await this.updateMasterIndex(document, clientIndex, clientIndexFile.url, this.store);
+                        this.logger.debug(`saveRemote - saved changes for document ${document.getID()}`);
                         return { ...clientIndex,
                                 url: clientIndexFile.url, masterIndexUrl: masterIndexFile.url };
                     });
-                } else return null;
+                } else {
+                    this.logger.debug(`saveRemote - no changes to write for document ${document.getID()}`);
+                    return null;
+                }
             });
     }
 
@@ -177,6 +188,11 @@ export class RemoteSync {
         document: Document,
         onProgress: ProgressFunction = defaultProgress
     ): Promise<Document> {
+        this.logger.debug(`mergeFromRemoteClients - merging into document ${document.getID()}...`);
+        const logProgress = (p: number) => {
+            this.logger.debug(`mergeFromRemoteClients - ${Math.round(p * 100)}%`);
+            onProgress(p);
+        };
         // get master index to find a list of our clients
         const masterIndex = await this.getMasterIndex(document.getID());
         const clientStates = document.getClientStates();
@@ -191,7 +207,7 @@ export class RemoteSync {
         let completed = 1;
         // total operations, includes fetch of getMasterIndex
         const total = 1 + clients.length;
-        onProgress(0.5 * (completed / total));
+        logProgress(0.5 * (completed / total));
         // fetch client indexes for those clients in parallel
         // note: we download only a subset of client indexes here, even though the master index may be out of date
         // (mid-update) because it would slow us down a lot and it should fix itself on the next sync.
@@ -199,15 +215,15 @@ export class RemoteSync {
             await Promise.all(clients.map(
                 (clientID) => this.getClientIndex(document.getID(), clientID)
                 .then((res) => {
-                    onProgress(++completed / total);
+                    logProgress(0.5 * (++completed / total));
                     return res;
                 })
             ));
-        onProgress(0.5);
+        logProgress(0.5);
 
         return this.mergeClients(document, clientIndexes, undefined,
             // second part = remaining 50% of work
-            (completion: number) => onProgress(0.5 + 0.5 * completion));
+            (completion: number) => logProgress(0.5 + 0.5 * completion));
     }
 
     /**
@@ -220,11 +236,16 @@ export class RemoteSync {
         document: Document,
         onProgress: ProgressFunction = defaultProgress
     ): Promise<Document> {
+        this.logger.debug(`mergeFromRemotePeers - merging into document ${document.getID()}...`);
+        const logProgress = (p: number) => {
+            this.logger.debug(`mergeFromRemotePeers - ${Math.round(p * 100)}%`);
+            onProgress(p);
+        };
         const myMasterIndex = await this.getMasterIndex(document.getID());
 
         let completed = 1; // 1 = fetch of master index
         let total = (1 + myMasterIndex.peers.length);
-        onProgress(0.25 * (completed / total)); // first part = 25% of work
+        logProgress(0.25 * (completed / total)); // first part = 25% of work
         // construct the list of peers to obtain changes from (from masterindex)
         // filter to those peers we need to sync with (are newer than we've synced with)
         // and can sync with (actually responds when we try to fetch their master index)
@@ -236,15 +257,15 @@ export class RemoteSync {
                     return document.isNewerThan(theirMasterIndex.latestUpdate) ? null : theirMasterIndex;
                 })
                 .then((res) => {
-                    onProgress(0.3 * (++completed / total));
+                    logProgress(0.25 * (++completed / total));
                     return res;
                 })
-                .catch((e) => null) // ignore any master index we couldn't fetch
+                .catch(this.errorAsNull) // ignore any master index we couldn't fetch
         ))).filter((s) => !!s); // remove nulls
 
         completed = 0;
         total = peers.length + 1; // include merge operation
-        onProgress(0.25 + 0.25 * (completed / total)); // second part = 25% of work
+        logProgress(0.25 + 0.25 * (completed / total)); // second part = 25% of work
         // for every peer, obtain the client index for the latest updated client of that peer
         // (this should already contain the clientState of the clients we know)
         // as well as the parts files and merge them into the document
@@ -252,16 +273,16 @@ export class RemoteSync {
             const client = peer.clients[peer.latestUpdate.clientID];
             return this.getRemoteFile(client.url, this.allStores)
                 .then((file) => {
-                    onProgress(0.25 + 0.25 * (completed / total));
+                    logProgress(0.25 + 0.25 * (completed / total));
                     return parseJsonAs(file, ObjectDataType.ClientIndex) as ClientIndex;
                 })
-                .catch((e) => null); // ignore any client index we couldn't fetch
+                .catch(this.errorAsNull); // ignore any client index we couldn't fetch
         }))).filter((s) => !!s); // remove nulls
-        onProgress(0.5);
+        logProgress(0.5);
 
         return this.mergeClients(document, clientIndexes, this.allStores,
             // last part = remaining 50% of work
-            (completion: number) => { onProgress(0.5 + 0.5 * completion); });
+            (completion: number) => { logProgress(0.5 + 0.5 * completion); });
     }
 
     public getMasterIndex(documentID: ObjectID): Promise<MasterIndex> {
@@ -286,6 +307,7 @@ export class RemoteSync {
         stores: RemoteStore[] = [this.store],
         onProgress: ProgressFunction = defaultProgress
     ): Promise<Document> {
+        this.logger.debug(`mergeClients - merging into document ${document.getID()}...`);
         const clientStates = document.getClientStates();
 
         let completedClients = 0;
@@ -312,16 +334,19 @@ export class RemoteSync {
                     parts: files
                 };
             } catch (e) {
-                return null; // for any error, skip this client
+                return this.errorAsNull(e); // for any error, skip this client
             }
         }));
 
         // merge all the parts into the document, sequentially by client, and then by part
         for (const change of changes) {
+            this.logger.debug(
+                `mergeClients - merging from client ${change.clientIndex.clientID} into document ${document.getID()}`);
             for (const part of change.parts) {
                 document.mergeChanges(part);
             }
         }
+        this.logger.debug(`mergeClients - done merging into document ${document.getID()}`);
 
         return document;
     }
@@ -381,6 +406,11 @@ export class RemoteSync {
                     return masterIndex;
                 });
             });
+    }
+
+    private errorAsNull(e: Error): null {
+        this.logger.error(e);
+        return null;
     }
 
 }

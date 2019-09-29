@@ -1,9 +1,8 @@
 import {Document} from "./document";
+import { defaultLogger } from "./logging";
 import * as storage from "./storage";
 import {ChangesObject, ClientID} from "./types";
 import * as uid from "./uid";
-
-// TODO: proper logging
 
 // Public API
 
@@ -34,5 +33,5 @@ export function restore(data: ChangesObject): Document {
   return from(data, true);
 }
 
-// the local and remote storage api's
-export { storage };
+// the local and remote storage api's, and the builtin logger (for reconfiguring)
+export { storage, defaultLogger };

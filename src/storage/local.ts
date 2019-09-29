@@ -6,7 +6,9 @@ import {FileData, Store} from "./types";
 /** Syncing documents to device-local stores */
 export class LocalSync {
 
-    constructor(private store: Store) { }
+    constructor(
+        private store: Store
+    ) { }
 
     /**
      * Save a document to a local store

@@ -9,6 +9,7 @@ Version
 
 - 0.1.0 - initial release, only tested by unit tests
 - 0.2.0 - migrated to typescript, changed minisync() to minisync.from()
+- 0.3.0 - local and remote (dropbox) storage / sync API
 
 Usage
 -----
@@ -76,6 +77,15 @@ Only properties set through these methods are synchronized.
 - getData() returns a cleaned up data object held inside the minisync object
 - minisync only supports JSON data, you cannot set properties on arrays.
 
+Storage
+-------
+
+`minisync.storage.LocalSync` can be used for storing a document locally (LocalStorage).
+
+`minisync.storage.RemoteSync` can be used to store a document remotely, to sync between clients from the same user, and to sync between different users (peers).
+
+See the respective code files for how to use.
+
 Changing
 --------
 
@@ -95,7 +105,7 @@ Capabilities
 - Eventually consistent state between all clients
 - No server other than for communication between clients
 - Communication protocol is JSON itself, can be sent over any JSON-capable channel
-- No "line of sight" between clients, synchronization can occur through e-mail
+- No "line of sight" needed between clients, synchronization could even occur through e-mail
 - Differential updates, only changes are sent
 
 Limitations

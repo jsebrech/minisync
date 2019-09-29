@@ -4,14 +4,17 @@
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define(["require", "exports", "./document", "./uid"], factory);
+        define(["require", "exports", "./document", "./logging", "./storage", "./uid"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var document_1 = require("./document");
+    var logging_1 = require("./logging");
+    exports.defaultLogger = logging_1.defaultLogger;
+    var storage = require("./storage");
+    exports.storage = storage;
     var uid = require("./uid");
-    // TODO: P2P communication mechanism (default implementation)
     // Public API
     /**
      * Create a minisync Document from a raw object or minisync changes object (bootstraps a new client)

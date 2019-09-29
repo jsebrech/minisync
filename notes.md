@@ -137,18 +137,3 @@ Strategy 3: publish the document to two stores as different clients
   Store lastReceived in later synced stores so remote clients on update resolution can detect the earlier synced stores as a duplicate of the later synced accounts. Don't store lastReceived in earlier synced accounts for later ones, because there is no guarantee the syncing will complete.
 
   > Caveat: increases syncing effort because this creates more peers to sync with.
-
-P2P implementation notes
-------------------------
-
-IndexedDB compat check:
-https://github.com/localForage/localForage/blob/master/src/utils/isIndexedDBValid.js
-
-Todo
-----
-
-- implement `minisync.fromUrl` to start a new local document from a remote minisync document
-  - what if it already exists locally? should have a way of obtaining the document id only and checking
-  - what if it already exists in a remote store? how to avoid conflicts if users recreate the document on a new device?
-- implement `document.downloadChanges` to connect to other remote clients and download their changes
-- logging and progress: turn local.ts and remote.ts into proper classes, inject a logging framework, make them send progress events

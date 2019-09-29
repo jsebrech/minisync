@@ -4,7 +4,7 @@ var __extends = (this && this.__extends) || (function () {
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
             function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
         return extendStatics(d, b);
-    }
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -27,8 +27,9 @@ var __extends = (this && this.__extends) || (function () {
     var types_1 = require("./types");
     var uid = require("./uid");
     /**
-     * Represents a single syncable document (top-level JSON object or array)
+     * Represents a single syncable document (top-level JSON object or array).
      * Keeps track of client state for this document across all the clients.
+     *
      * The Document is composed out of Syncable instances (wrappers around objects or arrays),
      * and primitive values. It can be nested arbitrarily deep, but all Syncables link back to the master Document.
      */
@@ -147,6 +148,31 @@ var __extends = (this && this.__extends) || (function () {
             return state.remote;
         };
         /**
+         * Return an array of known peers that we sync with
+         */
+        Document.prototype.getPeers = function () {
+            var state = this.getState();
+            if (!state.peers)
+                state.peers = [];
+            return state.peers;
+        };
+        /**
+         * Add or update a peer in the list of peers
+         * @param peer The new peer info
+         */
+        Document.prototype.addPeer = function (peer) {
+            // clean up the data object (might be a master index)
+            peer = { url: peer.url, latestUpdate: peer.latestUpdate, label: peer.label };
+            var peers = this.getPeers();
+            var index = peers.findIndex(function (item) { return item.url === peer.url; });
+            if (index >= 0) {
+                peers[index] = peer;
+            }
+            else {
+                peers.push(peer);
+            }
+        };
+        /**
          * Get updates to send to a remote client
          * @param {String} [clientID] Unique ID string for the remote client to get a delta update.
          * Leave empty to generate a universal state object containing the whole document
@@ -235,6 +261,24 @@ var __extends = (this && this.__extends) || (function () {
             }
             else {
                 throw new Error("Invalid changes object");
+            }
+        };
+        /**
+         * Is this document newer than the latest update of another client?
+         * @param otherUpdate The other client's latest update
+         */
+        Document.prototype.isNewerThan = function (otherUpdate) {
+            // crossed wires, assume we're older
+            if (!otherUpdate)
+                return false;
+            var clientState = this.getClientState(otherUpdate.clientID);
+            // we've never received a version from them, so assume we're older
+            if (!clientState.lastReceived) {
+                return false;
+                // we have received a version from them, compare against that
+            }
+            else {
+                return clientState.lastReceived >= otherUpdate.version;
             }
         };
         /**
