@@ -17,11 +17,13 @@ Usage
 
 Including in node:
 
+`npm install @jsebrech/minisync`
+
 ```js
   // ES module syntax:
-  import * as minisync from 'minisync';
+  import * as minisync from '@jsebrech/minisync';
   // CommonJS syntax:
-  const minisync = require('minisync');
+  const minisync = require('@jsebrech/minisync');
 ```
 
 Including in browser:
