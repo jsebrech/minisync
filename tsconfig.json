@@ -1,11 +1,12 @@
 {
     "compilerOptions": {
-        "module": "umd",
+        "module": "commonjs",
         "moduleResolution": "node",
         "noImplicitAny": true,
         "preserveConstEnums": true,
-        "outDir": "bin/",
+        "outDir": "dist/lib/",
         "sourceMap": true,
+        "declaration": true,
         "newLine": "LF",
         "target": "es5",
         "lib": ["dom", "es5", "scripthost", "es2015.core", "es2015.proxy", "es2015.promise", "es2017.object"]

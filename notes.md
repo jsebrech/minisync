@@ -137,3 +137,12 @@ Strategy 3: publish the document to two stores as different clients
   Store lastReceived in later synced stores so remote clients on update resolution can detect the earlier synced stores as a duplicate of the later synced accounts. Don't store lastReceived in earlier synced accounts for later ones, because there is no guarantee the syncing will complete.
 
   > Caveat: increases syncing effort because this creates more peers to sync with.
+
+Build system
+------------
+
+Based on https://marcobotto.com/blog/compiling-and-bundling-typescript-libraries-with-webpack/
+
+First build dist/lib (CommonJS / require) and dist/lib-esm (ES6 modules / import) using tsc / tsconfig.
+
+Then build dist/umd (UMD / browser) using webpack / webpack.config.js

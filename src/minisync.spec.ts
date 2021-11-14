@@ -2,9 +2,11 @@ import * as minisync from "./minisync";
 import { dateToString } from "./types";
 
 import * as chai from "chai";
-import * as mocha from "mocha";
 
 const expect = chai.expect;
+
+// don't log debug output
+minisync.defaultLogger().level = 'warn';
 
 describe("minisync core", () => {
 

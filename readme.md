@@ -1,4 +1,4 @@
-Minisync
+MiniSync
 ========
 
 A library for P2P synchronization of JSON data objects, 
@@ -10,71 +10,99 @@ Version
 - 0.1.0 - initial release, only tested by unit tests
 - 0.2.0 - migrated to typescript, changed minisync() to minisync.from()
 - 0.3.0 - local and remote (dropbox) storage / sync API
+- 0.4.0 - add UMD builds, publish to npm
 
 Usage
 -----
 
-Include src/polyfill.js for old IE versions or environments that lack Array.forEach.
-Drop the file in your scripts folder
-Use [RequireJS](http://requirejs.org/docs/start.html) or CommonJS to load.
+Including in node:
 
-Client 1: Alice
+```js
+  // ES module syntax:
+  import * as minisync from 'minisync';
+  // CommonJS syntax:
+  const minisync = require('minisync');
+```
 
+Including in browser:
+```html
+  <script src="https://unpkg.com/minisync/dist/umd/minisync.js"></script>
+  <script>
+    const minisync = window.MiniSync;
+  </script>
+```
+
+> Include src/polyfill.js for old IE versions or environments that lack Array.forEach.
+> Drop the file in your scripts folder
+
+An example of peers Alice and Bob exchanging a document:
+
+Client 1: Alice, making a document and sending to Bob
+
+```js
     // create from scratch
-    var data = minisync.from({ foo: 'initial state goes here' });
+    const data = minisync.from({ foo: 'initial state goes here' });
     // this client is known as 'alice'
     data.setClientID('alice');
     // make changes
     data.set('foo', {bar: ['baz']});
     data.set('foo.bar[1]', 'quu');
     // get a changes object that contains everything (can be sent to any client)
-    var changes = data.getChanges();
-    // send this changes object to bob
-    ...
+    const changes = data.getChanges();
     // persist locally for later restore
     localStorage.setItem('mydocument', JSON.stringify(changes);
-    
-    ... later ...
-    
-    // restore from earlier saved state
-    var data = minisync.restore(JSON.parse(localStorage.getItem('mydocument'));
-    // receive changes from bob
-    data.mergeChanges(bobsdelta);
-    // make a change
-    data.set('foo.bar', []);
-    // get a changes object for bob (delta containing only changes new to bob)
-    var delta = data.getChangesForClient('bob');
-    // send changes object to bob
+    // send this changes object to bob
     ...
+```
 
+Client 2: Bob, opening the document, changing it, and sending to Alice
     
-Client 2: Bob
-    
+```js
     // create document initially from master changes object received from alice
-    var data = minisync.from(changes);
+    const data = minisync.from(changes);
     // this client is known as bob
     data.setClientID('bob');
     // make a change
     data.get('foo.bar').push('foo you too');
     // make delta object for alice
-    var delta = data.getChangesForClient('alice');
-    
-    ... later ...
-    
+    const bobsdelta = data.getChangesForClient('alice');
+    // send changes to alice
+    ...
+```
+
+Alice, receiving Bob's changes, making more changes
+
+```js 
+    // restore from earlier saved state
+    const data = minisync.restore(JSON.parse(localStorage.getItem('mydocument'));
+    // receive changes from bob
+    data.mergeChanges(bobsdelta);
+    // make a change
+    data.set('foo.bar', []);
+    // get a changes object for bob (delta containing only changes new to bob)
+    const alicesdelta = data.getChangesForClient('bob');
+    // send changes object to bob
+    ...
+```
+
+Bob, receiving Alice's changes
+
+```js
     // merge delta changes from alice
     data.mergeChanges(alicesdelta);
-    
+```
+
 Clients can merge in any and all directions, they just need to have a shared ancestry
 by initially creating an object from the result of getChanges of any other client.
 
-Client ID's can be auto-generated. Just call getClientID() to obtain the current client's id.
+Client ID's can be auto-generated. Just call `getClientID()` to obtain the current client's id.
 
 Supported API's:
-- set(path, value) can be used to set any object's property, or specific entries in an array.
-- get(arraypath) returns an object that provides the complete array API
-- get(objectpath) returns an object that supports the get() and set() API's. 
+- `set(path, value)` can be used to set any object's property, or specific entries in an array.
+- `get(arraypath)` returns an object that provides the complete array API
+- `get(objectpath)` returns an object that supports the get() and set() API's. 
 Only properties set through these methods are synchronized.
-- getData() returns a cleaned up data object held inside the minisync object
+- `getData()` returns a cleaned up data object held inside the minisync object
 - minisync only supports JSON data, you cannot set properties on arrays.
 
 Storage
@@ -91,8 +119,10 @@ Changing
 
 To build a new version:
 
-     npm install
-     npm run build
+```
+    npm install
+    npm run build
+```
 
 Run `npm test` to test changes.
 

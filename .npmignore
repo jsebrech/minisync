@@ -1,10 +1,9 @@
 .idea/
 .vscode/
-node_modules/
+src/
 *.sqlite
 .env
 out/
 .DS_Store
 coverage/
 .nyc_output/
-dist/
