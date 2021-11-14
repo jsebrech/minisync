@@ -28,7 +28,7 @@ Including in node:
 
 Including in browser:
 ```html
-  <script src="https://unpkg.com/minisync/dist/umd/minisync.js"></script>
+  <script src="https://unpkg.com/@jsebrech/minisync/dist/umd/minisync.js"></script>
   <script>
     const minisync = window.MiniSync;
   </script>
