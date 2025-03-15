@@ -36,7 +36,7 @@ export interface Store {
     /** Upload a file to a store (privately) */
     putFile(file: FileData): Promise<FileHandle>;
     /** Download a file from a store, returns null if no such file exists */
-    getFile(file: FileHandle): Promise<FileData>;
+    getFile(file: FileHandle): Promise<FileData|null>;
 }
 
 /**
@@ -60,8 +60,8 @@ export interface RemoteClient {
     url: string;
     /** The version we've last seen of this client */
     lastReceived: Version;
-    /** Humna-visible description of this client */
-    label ?: string;
+    /** Human-visible description of this client */
+    label: string;
 }
 
 /** Group of remote client descriptions, indexed by client id */
@@ -103,20 +103,20 @@ export interface ClientIndex {
  */
 export interface RemoteClientIndex extends ClientIndex {
     /** the url where the client index is published */
-    url: string;
+    url: string|null;
     /** url of the master index */
-    masterIndexUrl: string;
+    masterIndexUrl: string|null;
 }
 
 export interface ClientIndexPart {
     /** unique identifier of the part, in ascending order */
     id: number;
     /* contains the data starting from this version */
-    fromVersion: Version;
+    fromVersion: Version|null;
     /* ends at this version */
-    toVersion: Version;
+    toVersion: Version|null;
     /** url for remote download of the part */
-    url: string;
+    url: string|null;
     /** size in bytes (indicative) */
     size: number;
 }

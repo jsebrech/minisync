@@ -15,7 +15,7 @@ describe("minisync core", () => {
         });
 
         it("should be different after incrementing", () => {
-            const previous = [];
+            const previous: string[] = [];
             let version = "";
             for (let i = 0; i < 100; i++) {
                 version = base64.nextVersion(version);

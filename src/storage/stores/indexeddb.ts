@@ -10,7 +10,7 @@ interface IndexedDBFileWrapper {
     file: FileData;
 }
 
-function request2promise<T>(req: IDBRequest, tr: IDBTransaction = null): Promise<T> {
+function request2promise<T>(req: IDBRequest, tr?: IDBTransaction): Promise<T> {
     let result: T;
     return new Promise((resolve, reject) => {
         req.onerror = (e: any) => {
@@ -31,7 +31,7 @@ export class IndexedDBStore implements Store {
     /**
      * Return a handle to the indexeddb factory object
      */
-    private static getIDB(): IDBFactory {
+    private static getIDB(): IDBFactory|undefined {
         try {
             if (typeof indexedDB !== "undefined") return indexedDB;
         } catch (e) { /* ignore */ }
@@ -62,16 +62,16 @@ export class IndexedDBStore implements Store {
             typeof IDBKeyRange !== "undefined";
     }
 
-    private db: IDBDatabase;
+    private db?: IDBDatabase;
 
     /** database with name prefix will be used */
     constructor(readonly prefix: string = "minisync") {
         if (!IndexedDBStore.canUseIDB()) throw new Error("IndexedDB not supported here");
     }
 
-    public getFile(file: FileHandle): Promise<FileData> {
+    public getFile(file: FileHandle): Promise<FileData|null> {
         return this.openDB().then((db) => {
-            return request2promise(db.transaction(objectStore1)
+            return request2promise<IndexedDBFileWrapper>(db.transaction(objectStore1)
                 .objectStore(objectStore1)
                 .get(this.handleToKey(file))
             ).then((s: IndexedDBFileWrapper) => s ? s.file : null /* not found */);
@@ -130,8 +130,10 @@ export class IndexedDBStore implements Store {
             if (this.db) {
                 resolve(this.db);
             } else {
+                const factory = IndexedDBStore.getIDB();
+                if (!factory) throw new Error("IndexedDB not supported here");
                 // initial db version is 1, request upgrade to version 2 to create the object store
-                const req = IndexedDBStore.getIDB().open(this.prefix, 1);
+                const req = factory.open(this.prefix, 1);
                 req.onupgradeneeded = (e: IDBVersionChangeEvent) => {
                     if (e.newVersion === 1) {
                         const db = req.result;
@@ -140,7 +142,7 @@ export class IndexedDBStore implements Store {
                     }
                 };
                 req.onsuccess = (e: any) => {
-                    this.db = e.target.result;
+                    this.db = e.target.result as IDBDatabase;
                     resolve(this.db);
                 };
                 req.onerror = (e: any) => {

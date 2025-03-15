@@ -1,4 +1,4 @@
-let _logger: Logger = null;
+let _logger: Logger;
 
 export function defaultLogger() {
     if (!_logger) _logger = new ConsoleLogger();

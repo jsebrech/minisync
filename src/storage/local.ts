@@ -37,7 +37,8 @@ export class LocalSync {
         return this.store.getFile({
             path: ["documents"],
             fileName: id + ".json"
-        }).then((data: FileData) => {
+        }).then((data: FileData|null) => {
+            if (!data) throw new Error(`restoreLocal: document '${id}' not found`);
             return minisync.restore(JSON.parse(data.contents));
         });
     }

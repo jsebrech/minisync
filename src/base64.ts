@@ -1,4 +1,4 @@
-import {padStr, Version} from "./types";
+import {Version} from "./types";
 
 /**
  * Base 64 encode/decode (6 bits per character)
@@ -59,15 +59,15 @@ function nextVersion(v: Version = "", minLength: number = 1): Version {
  * @param vNew
  * @param vOld
  */
-function isNewerVersion(vNew: Version, vOld: Version): boolean {
+function isNewerVersion(vNew: Version|undefined, vOld: Version|undefined): boolean {
     if (!vNew) {
         return false;
     } else if (vNew && !vOld) {
         return true;
-    } else if (vNew.length === vOld.length) {
+    } else if (vOld && (vNew.length === vOld.length)) {
         return vNew > vOld;
-    } else if (vNew.length > vOld.length) {
-        return isNewerVersion(vNew, padStr(vOld, vNew.length));
+    } else if (vOld && (vNew.length > vOld.length)) {
+        return isNewerVersion(vNew, vOld.padStart(vNew.length, "0"));
     } else return false;
 }
 

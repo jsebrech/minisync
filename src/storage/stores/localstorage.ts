@@ -3,7 +3,7 @@ import { FileData, FileHandle, Store } from "../types";
 export class LocalStorageStore implements Store {
     constructor(readonly prefix: string = "minisync") { }
 
-    public getFile(file: FileHandle): Promise<FileData> {
+    public getFile(file: FileHandle): Promise<FileData|null> {
         return new Promise((resolve, reject) => {
             const stored = window.localStorage.getItem(this.prefix + "//" + this.encode(file));
             if (stored === null) {
@@ -43,9 +43,10 @@ export class LocalStorageStore implements Store {
     }
 
     private allKeys(): string[] {
-        const result = [];
+        const result: string[] = [];
         for ( let i = 0, len = localStorage.length; i < len; ++i ) {
-            result.push(localStorage.key(i));
+            const name = localStorage.key(i)
+            if (name !== null) result.push(name);
         }
         return result;
     }

@@ -50,10 +50,10 @@ describe("minisync storage", () => {
                 req.onsuccess = () => {
                     store.getFile({ path: ["path"], fileName: "file"}).then((result) => {
                         expect(typeof result).to.equal("object");
-                        expect(typeof result.path).to.equal("object");
-                        expect(result.path[0]).to.equal("path");
-                        expect(result.fileName).to.equal("file");
-                        expect(result.contents).to.equal("foo");
+                        expect(typeof result?.path).to.equal("object");
+                        expect(result?.path[0]).to.equal("path");
+                        expect(result?.fileName).to.equal("file");
+                        expect(result?.contents).to.equal("foo");
                         done();
                     }).catch((e) => done(new Error(e)));
                 };

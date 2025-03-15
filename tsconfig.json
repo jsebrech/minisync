@@ -1,5 +1,7 @@
 {
     "compilerOptions": {
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
         "module": "commonjs",
         "moduleResolution": "node",
         "noImplicitAny": true,

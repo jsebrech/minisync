@@ -29,14 +29,14 @@ describe("minisync p2p", () => {
             expect(changes.sentBy).to.equal(o.getClientID());
             expect(changes.fromVersion).to.equal(o.getDocVersion());
             expect(changes.changes).not.to.be.a("null");
-            expect(changes.changes.foo).to.equal("bar");
+            expect(changes.changes!.foo).to.equal("bar");
             o.set("foo", "baz");
             changes = o.getChangesForClient("client1");
             expect(changes).not.to.be.a("null");
             expect(changes.sentBy).to.equal(o.getClientID());
             expect(changes.fromVersion).to.equal(o.getDocVersion());
             expect(changes.changes).not.to.be.a("null");
-            expect(changes.changes.foo).to.equal("baz");
+            expect(changes.changes!.foo).to.equal("baz");
         });
 
         it("should initialize from a changes object", () => {
@@ -54,14 +54,14 @@ describe("minisync p2p", () => {
             compareObjects(getData(client1), getData(client2));
             // replacing non-object value with object value
             client2.set("bar", { baz: "test" });
-            client1.mergeChanges(client2.getChangesForClient(client1.getClientID()));
+            client1.applyChanges(client2.getChangesForClient(client1.getClientID()));
             compareObjects(getData(client1), getData(client2));
             // updating only a nested property
             client2.get("bar").set("baz", "changed");
-            client1.mergeChanges(client2.getChangesForClient(client1.getClientID()));
+            client1.applyChanges(client2.getChangesForClient(client1.getClientID()));
             compareObjects(getData(client2), getData(client1));
             // one more sync to make client2 realize client1 got all the updates
-            client2.mergeChanges(client1.getChangesForClient(client2.getClientID()));
+            client2.applyChanges(client1.getChangesForClient(client2.getClientID()));
             compareObjects(getData(client1), getData(client2));
             expect(client1.getChangesForClient(client2.getClientID()).changes).to.be.a("null");
             expect(client2.getChangesForClient(client1.getClientID()).changes).to.be.a("null");
@@ -74,14 +74,14 @@ describe("minisync p2p", () => {
             compareObjects(getData(client1), getData(client2));
             // replacing non-object value with object value
             client2.set("bar", { baz: "test" });
-            client1.mergeChanges(client2.getChanges());
+            client1.applyChanges(client2.getChanges());
             compareObjects(getData(client1), getData(client2));
             // updating only a nested property
             client2.get("bar").set("baz", "changed");
-            client1.mergeChanges(client2.getChanges());
+            client1.applyChanges(client2.getChanges());
             compareObjects(getData(client2), getData(client1));
             // one more sync to make client2 realize client1 got all the updates
-            client2.mergeChanges(client1.getChanges());
+            client2.applyChanges(client1.getChanges());
             compareObjects(getData(client1), getData(client2));
             // are they really synchronized?
             expect(client1.getChanges(client2.getClientID()).changes).to.be.a("null");
@@ -96,7 +96,7 @@ describe("minisync p2p", () => {
             expect(client3.getChangesForClient(client1.getClientID()).changes).to.be.a("null");
 
             client3.set("foo", 2);
-            client1.mergeChanges(client3.getChangesForClient(client1.getClientID()));
+            client1.applyChanges(client3.getChangesForClient(client1.getClientID()));
             compareObjects(getData(client1), getData(client3));
         });
 
@@ -105,7 +105,7 @@ describe("minisync p2p", () => {
             const client2 = minisync.from(client1.getChanges());
             compareObjects(getData(client1), getData(client2));
             client1.get("bar").remove();
-            client2.mergeChanges(client1.getChanges());
+            client2.applyChanges(client1.getChanges());
             expect(client2.get("bar")).to.be.a("null");
         });
 
@@ -130,7 +130,7 @@ describe("minisync p2p", () => {
 
             alice = minisync.restore(changes);
             // receive changes from bob
-            alice.mergeChanges(JSON.parse(bobsdelta));
+            alice.applyChanges(JSON.parse(bobsdelta));
 
             // should be identical at this point
             compareObjects(getData(alice), getData(bob));
@@ -141,7 +141,7 @@ describe("minisync p2p", () => {
             const alicesdelta = JSON.stringify(alice.getChangesForClient("bob"));
 
             // merge delta changes from alice
-            bob.mergeChanges(JSON.parse(alicesdelta));
+            bob.applyChanges(JSON.parse(alicesdelta));
 
             // should be identical again
             compareObjects(getData(alice), getData(bob));
@@ -186,7 +186,7 @@ describe("minisync p2p", () => {
                             compareObjects(interval, expectedInterval);
                         }
                     );
-                    c2.mergeChanges(c1.getChanges());
+                    c2.applyChanges(c1.getChanges());
                     expect(expectedIntervalIndex).to.equal(3);
                 } finally {
                     sinon.restore();
@@ -198,10 +198,10 @@ describe("minisync p2p", () => {
                 const c2 = minisync.from(c1.getChanges());
                 compareObjects(getData(c1), getData(c2));
                 c2.set("a[1]", 321);
-                c2.mergeChanges(c1.getChanges());
+                c2.applyChanges(c1.getChanges());
                 expect(c2.get("a[1]")).to.equal(321);
                 c2.get("a").pop();
-                c1.mergeChanges(c2.getChanges());
+                c1.applyChanges(c2.getChanges());
                 compareObjects(getData(c1), getData(c2));
             });
 
@@ -210,10 +210,10 @@ describe("minisync p2p", () => {
                 const c2 = minisync.from(c1.getChanges());
                 compareObjects(getData(c1), getData(c2));
                 // make sure they"re fully synchronized
-                c1.mergeChanges(c2.getChanges());
+                c1.applyChanges(c2.getChanges());
                 // this doesn"t update the array, but should still sync
                 c2.set("a[1].foo", {nested: true});
-                c1.mergeChanges(c2.getChanges());
+                c1.applyChanges(c2.getChanges());
                 compareObjects(getData(c1), getData(c2));
             });
 
@@ -223,7 +223,7 @@ describe("minisync p2p", () => {
                 c1.set("a[1].o", 3);
                 c1.get("a").splice(1, 0, 5);
                 c2.get("a").splice(1, 0, {l: 1});
-                c2.mergeChanges(c1.getChanges());
+                c2.applyChanges(c1.getChanges());
                 expect(c2.get("a").length()).to.equal(4);
                 expect(c2.get("a[0].o")).to.equal(1);
                 expect(c2.get("a[1]")).to.equal(5);
@@ -240,7 +240,7 @@ describe("minisync p2p", () => {
                 const a2 = c2.get("a");
                 a2.splice(1, 0, {l: 1});
                 a2.unshift({l: 2});
-                c2.mergeChanges(c1.getChanges());
+                c2.applyChanges(c1.getChanges());
                 // c2.a = [{l:2},{o:1},{r:1},{l:1},{o:2},{r:2}]
                 expect(c2.get("a").length()).to.equal(6);
                 expect(c2.get("a[0].l")).to.equal(2);
@@ -249,7 +249,7 @@ describe("minisync p2p", () => {
                 expect(c2.get("a[3].l")).to.equal(1);
                 expect(c2.get("a[4].o")).to.equal(2);
                 expect(c2.get("a[5].r")).to.equal(2);
-                c1.mergeChanges(c2.getChanges());
+                c1.applyChanges(c2.getChanges());
                 compareObjects(c1.getData(), c2.getData());
             });
 
@@ -257,7 +257,7 @@ describe("minisync p2p", () => {
                 const c1 = minisync.from({a: [{o: 1}, {o: 2}, {o: 3}]});
                 const c2 = minisync.from(c1.getChanges());
                 c1.get("a").splice(1, 1);
-                c2.mergeChanges(c1.getChanges());
+                c2.applyChanges(c1.getChanges());
                 expect(c2.get("a").length()).to.equal(2);
                 expect(c2.get("a[0].o")).to.equal(1);
                 expect(c2.get("a[1].o")).to.equal(3);
@@ -315,7 +315,7 @@ describe("minisync p2p", () => {
                 quu: "d"
             });
             delete p.quu;
-            c2.mergeChanges(o1.getChanges());
+            c2.applyChanges(o1.getChanges());
             expect(c2.getData().quu).to.be.an("undefined");
         });
 

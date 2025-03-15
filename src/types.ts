@@ -5,39 +5,18 @@ export type Timestamp = string;
 export type Proxy = any;
 
 /**
- * Returns true if the given parameter is an Array
- * @param v
- * @returns {boolean}
- */
-export function isArray(v: any): boolean {
-    return Object.prototype.toString.call(v) === "[object Array]";
-}
-
-/**
  * Return a date string which can be compared using < and >
  * @param {Date} [date]
  * @returns {String}
  */
 export function dateToString(date: Date): Timestamp {
     if (!(date instanceof Date)) date = new Date();
-    return padStr(date.getUTCFullYear().toString(), 4) +
-           padStr((date.getUTCMonth() + 1).toString(), 2) +
-           padStr(date.getUTCDate().toString(), 2) +
-           padStr(date.getUTCHours().toString(), 2) +
-           padStr(date.getUTCMinutes().toString(), 2) +
-           padStr(date.getUTCSeconds().toString(), 2);
-}
-
-/**
- * Left-pad a string to the desired length with zeroes
- * @param arg
- * @param {int} length
- * @returns {string}
- */
-export function padStr(arg: string, length: number): string {
-    let str: string = String(arg);
-    while (str.length < length) str = "0" + str;
-    return str;
+    return date.getUTCFullYear().toString().padStart(4, '0') +
+           (date.getUTCMonth() + 1).toString().padStart(2, '0') +
+           date.getUTCDate().toString().padStart(2, '0') +
+           date.getUTCHours().toString().padStart(2, '0') +
+           date.getUTCMinutes().toString().padStart(2, '0') +
+           date.getUTCSeconds().toString().padStart(2, '0');
 }
 
 /**
@@ -46,10 +25,10 @@ export function padStr(arg: string, length: number): string {
 export interface ClientState {
     /** ID of the remote client */
     clientID: ClientID;
-    /** Which version of us was last acknowledged as received by them */
-    lastAcknowledged: Version;
-    /** Which version of them was last received by us */
-    lastReceived: Version;
+    /** Which version of us was last acknowledged as received by them, undefined if no such version */
+    lastAcknowledged?: Version;
+    /** Which version of them was last received by us, undefined if no such version */
+    lastReceived?: Version;
 }
 
 export interface LatestUpdate {
@@ -64,9 +43,9 @@ export interface LatestUpdate {
 /** Description of a peer (user that shares a document) */
 export interface Peer {
     /** URL to the master index of that peer */
-    url: string;
+    url: string|null;
     /** The metadata for the last sync with this peer */
-    latestUpdate: LatestUpdate;
+    latestUpdate: LatestUpdate|null;
     /** Human-visible description of this peer (copied from their master index) */
     label: string;
 }
@@ -128,10 +107,10 @@ export interface ChangesObject {
     fromVersion: Version;
     /** The state of all peers as known to that client */
     clientStates: ClientState[];
-    /** The version starting from which changes are reported */
-    changesSince: Version;
+    /** The version starting from which changes are reported, null if starting from the beginning */
+    changesSince: Version|null;
     /** The changes themselves */
-    changes: AnyWithState;
+    changes: AnyWithState|null;
 }
 
 export const enum ObjectDataType {

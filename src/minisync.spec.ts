@@ -116,13 +116,13 @@ describe("minisync core", () => {
             expect(changes).to.be.a("null");
             changes = o.getChangesSince(initialVersion);
             expect(changes).not.to.be.a("null");
-            expect(changes.key1).to.be.an("undefined");
-            expect(changes.key2).not.to.be.an("undefined");
-            expect(changes.key2.key3).to.be.an("undefined");
-            expect(changes.key2.key4).not.to.be.an("undefined");
-            expect(changes.key2.key4.key5).to.equal("changed");
-            expect(changes.key2.key4.key6).to.be.an("undefined");
-            expect(changes.key2.key4.key7).to.equal("bar");
+            expect(changes!.key1).to.be.an("undefined");
+            expect(changes!.key2).not.to.be.an("undefined");
+            expect(changes!.key2.key3).to.be.an("undefined");
+            expect(changes!.key2.key4).not.to.be.an("undefined");
+            expect(changes!.key2.key4.key5).to.equal("changed");
+            expect(changes!.key2.key4.key6).to.be.an("undefined");
+            expect(changes!.key2.key4.key7).to.equal("bar");
         });
     });
 
@@ -195,26 +195,24 @@ describe("minisync core", () => {
         });
 
         it("should implement forEach", () => {
-            if (Array.prototype.forEach) {
-                const a = minisync.from({a: ["foo", "bar", {foo: "bar"}]}).get("a");
-                let count = 0;
-                a.forEach((value: any, index: number, arr: any[]) => {
-                    count++;
-                    switch (index) {
-                        case 0: expect(value).to.equal("foo"); break;
-                        case 1: expect(value).to.equal("bar"); break;
-                        case 2:
-                            expect(value).to.be.an("object");
-                            expect(value.get("foo")).to.equal("bar");
-                            break;
-                        default:
-                            break;
-                    }
-                    expect(arr).not.to.be.a("null");
-                    expect(arr.length).to.equal(3);
-                });
-                expect(count).to.equal(3);
-            }
+            const a = minisync.from({a: ["foo", "bar", {foo: "bar"}]}).get("a");
+            let count = 0;
+            a.forEach((value: any, index: number, arr: any[]) => {
+                count++;
+                switch (index) {
+                    case 0: expect(value).to.equal("foo"); break;
+                    case 1: expect(value).to.equal("bar"); break;
+                    case 2:
+                        expect(value).to.be.an("object");
+                        expect(value.get("foo")).to.equal("bar");
+                        break;
+                    default:
+                        break;
+                }
+                expect(arr).not.to.be.a("null");
+                expect(arr.length).to.equal(3);
+            });
+            expect(count).to.equal(3);
         });
 
         it("should implement indexOf", () => {

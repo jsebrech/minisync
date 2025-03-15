@@ -10,8 +10,8 @@ describe("minisync core", () => {
     describe("uid", () => {
 
         it("should be unique many times", () => {
-            const ids = [];
-            let id = null;
+            const ids: string[] = [];
+            let id: string;
             for (let i = 0; i < 1000; i++) {
                 id = uid.next();
                 expect(ids.indexOf(id)).to.equal(-1);

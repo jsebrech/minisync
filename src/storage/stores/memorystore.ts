@@ -8,9 +8,9 @@ const DATA_URI_PREFIX = "data:text/plain;base64,";
 export class MemoryStore implements RemoteStore {
     constructor(readonly files: any = {}) { }
 
-    public getFile(file: FileHandle): Promise<FileData> {
+    public getFile(file: FileHandle): Promise<FileData|null> {
         return new Promise((resolve, reject) => {
-            const stored = this.valueAtPath([].concat(file.path, [file.fileName]));
+            const stored = this.valueAtPath([...file.path, file.fileName]);
             if ((stored === null) || (stored === undefined)) {
                 // not found
                 resolve(null);

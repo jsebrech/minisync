@@ -28,7 +28,7 @@ export class DropboxStore implements RemoteStore {
         });
     }
 
-    public getFile(file: FileHandle): Promise<FileData> {
+    public getFile(file: FileHandle): Promise<FileData|null> {
         return this.dropbox.filesDownload({
             path: this.pathToString(file.path) + file.fileName
         }).then((f: DropboxTypes.files.FileMetadata) => {
@@ -56,7 +56,7 @@ export class DropboxStore implements RemoteStore {
                 return this.dropbox.filesListFolderContinue({ cursor: res.cursor }).then(handle);
             } else {
                 return Promise.resolve(
-                    [].concat(res.entries.filter((f) => f[".tag"] === "file"), list)
+                    res.entries.filter((f) => f[".tag"] === "file").concat(list || [])
                 );
             }
         };
@@ -98,7 +98,7 @@ export class DropboxStore implements RemoteStore {
      * @param path Array to convert
      */
     private pathToString(path: string[]) {
-        return [].concat(["", this.rootFolder], path, [""]).join("/").replace(/(\/)+/g, "/");
+        return ["", this.rootFolder, ...path, ""].join("/").replace(/(\/)+/g, "/");
     }
 
     /**

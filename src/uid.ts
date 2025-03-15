@@ -3,10 +3,10 @@
  */
 
 import * as base64 from "./base64";
-import {ClientID, padStr} from "./types";
+import {ClientID} from "./types";
 
 interface LastUid {
-    at: number;
+    at: number|null;
     uids: number[];
 }
 
@@ -38,7 +38,7 @@ function create(): ClientID {
         // paranoia: keep track of generated id's to avoid collisions
         if (lastUid.uids.indexOf(uid) === -1) {
             lastUid.uids.push(uid);
-            return padStr(base64.encodeFloat(uid), 8);
+            return base64.encodeFloat(uid).padStart(8, "0");
         }
     }
 }
@@ -52,7 +52,7 @@ function createLong(): ClientID {
         (Math.random() * Math.pow(2, 47)) +
         (Math.random() * Math.pow(2, 32))
     );
-    return create() + padStr(base64.encodeFloat(random), 8);
+    return create() + base64.encodeFloat(random).padStart(8, "0");
 }
 
 export {create as next};

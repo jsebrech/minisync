@@ -57,7 +57,8 @@ describe("minisync storage", () => {
             const masterIndex = await sync.getMasterIndex(document.getID());
             expect(masterIndex.clients).to.be.an("object");
             expect(masterIndex.latestUpdate).to.be.an("object");
-            const clientID = masterIndex.latestUpdate.clientID;
+            const clientID = masterIndex.latestUpdate!.clientID;
+            expect(clientID).to.be.a("string");
             expect(clientID).to.equal(document.getClientID());
             const clientEntry = masterIndex.clients[clientID];
             expect(clientEntry).to.be.an("object");
@@ -82,8 +83,8 @@ describe("minisync storage", () => {
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
                 fileName: "part-00000000.json"
             });
-            expect(partFile.contents).to.be.a("string");
-            const partData = JSON.parse(partFile.contents);
+            expect(partFile?.contents).to.be.a("string");
+            const partData = partFile && JSON.parse(partFile.contents);
             expect(partData).to.be.an("object");
             expect(partData.changes).to.be.an("object");
             expect(partData.changes.foo).to.be.an("object");
@@ -111,8 +112,8 @@ describe("minisync storage", () => {
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
                 fileName: "part-00000000.json"
             });
-            expect(partFile.contents).to.be.a("string");
-            const partData = JSON.parse(partFile.contents);
+            expect(partFile?.contents).to.be.a("string");
+            const partData = partFile && JSON.parse(partFile.contents);
             expect(partData).to.be.an("object");
             expect(partData.changes).to.be.an("object");
             expect(partData.changes.foo).to.be.an("object");
@@ -145,8 +146,8 @@ describe("minisync storage", () => {
                 path: ["documents", "document-" + document.getID(), "client-" + document.getClientID()],
                 fileName: "part-00000001.json"
             });
-            expect(partFile.contents).to.be.a("string");
-            const partData = JSON.parse(partFile.contents);
+            expect(partFile?.contents).to.be.a("string");
+            const partData = partFile && JSON.parse(partFile.contents);
             expect(partData).to.be.an("object");
             expect(partData.changes).to.be.an("object");
             expect(partData.changes.foo).to.be.an("object");
@@ -226,8 +227,9 @@ describe("minisync storage", () => {
             client1.set("foo[1]", "B");
             // vreates another parts file, containing only B
             const clientIndex = await sync.saveRemote(client1, { partSizeLimit: 1 });
+            expect(clientIndex).not.to.be.null;
             // construct a new client from the published url
-            const client2 = await sync.createFromUrl(clientIndex.masterIndexUrl);
+            const client2 = await sync.createFromUrl(clientIndex!.masterIndexUrl!);
             expect(client2.getData()).to.eql(client1.getData());
         });
 
@@ -239,16 +241,18 @@ describe("minisync storage", () => {
 
             const client1 = minisync.from({foo: ["A"]});
             const published = await sync1.saveRemote(client1);
+            expect(published).not.to.be.null;
 
             // should be identical
-            const client2 = await sync2.createFromUrl(published.masterIndexUrl);
+            const client2 = await sync2.createFromUrl(published!.masterIndexUrl!);
             expect(client2.get("foo").getData()).to.eql(["A"]);
             const client2Index = await sync2.saveRemote(client2);
             const peer2Index = await sync2.getMasterIndex(client2.getID());
+            expect(client2Index).not.to.be.null;
 
             // make client1 aware of the other peer
             client1.addPeer({
-                url: client2Index.masterIndexUrl,
+                url: client2Index!.masterIndexUrl,
                 latestUpdate: peer2Index.latestUpdate,
                 label: peer2Index.label
             });
@@ -294,10 +298,10 @@ class TestStore extends MemoryStore {
     }
 
     public downloadUrl(url: string): Promise<string> {
-        const path = url.substr("test://".length).split("/");
-        const fileName = path.pop();
-        const storeId = parseInt(path.shift(), 10);
+        const path = url.slice("test://".length).split("/");
+        const fileName: string = path.pop()!;
+        const storeId = parseInt(path.shift()!, 10);
         const store = TestStore.stores[storeId];
-        return store.getFile({ path, fileName }).then((file) => file.contents);
+        return store.getFile({ path, fileName }).then((file) => file ? file.contents : "");
     }
  }

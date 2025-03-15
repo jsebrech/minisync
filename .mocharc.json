@@ -1,7 +1,6 @@
 {
     "reporter": "spec",
     "require": [
-        "./src/polyfill",
         "ts-node/register",
         "source-map-support/register"
     ]

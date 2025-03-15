@@ -34,7 +34,6 @@ Including in browser:
   </script>
 ```
 
-> Include src/polyfill.js for old IE versions or environments that lack Array.forEach.
 > Drop the file in your scripts folder
 
 An example of peers Alice and Bob exchanging a document:
@@ -78,7 +77,7 @@ Alice, receiving Bob's changes, making more changes
     // restore from earlier saved state
     const data = minisync.restore(JSON.parse(localStorage.getItem('mydocument'));
     // receive changes from bob
-    data.mergeChanges(bobsdelta);
+    data.applyChanges(bobsdelta);
     // make a change
     data.set('foo.bar', []);
     // get a changes object for bob (delta containing only changes new to bob)
@@ -91,7 +90,7 @@ Bob, receiving Alice's changes
 
 ```js
     // merge delta changes from alice
-    data.mergeChanges(alicesdelta);
+    data.applyChanges(alicesdelta);
 ```
 
 Clients can merge in any and all directions, they just need to have a shared ancestry
