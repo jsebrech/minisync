@@ -16,102 +16,98 @@ setGlobalVars(null, {
     checkOrigin: false
 });
 
-describe("minisync storage", () => {
+describe("storage - IndexedDB", () => {
 
-    describe("IndexedDB", () => {
+    let store: IndexedDBStore;
 
-        let store: IndexedDBStore;
+    before(() => {
+        store = new IndexedDBStore("test");
+    });
 
-        before(() => {
-            store = new IndexedDBStore("test");
-        });
+    beforeEach((done) => {
+        // clear database
+        store.openDB().then((db) => {
+            db.transaction("files", "readwrite").objectStore("files").clear().onsuccess = () => {
+                done();
+            };
+        }).catch((e) => done(new Error(e)));
+    });
 
-        beforeEach((done) => {
-            // clear database
-            store.openDB().then((db) => {
-                db.transaction("files", "readwrite").objectStore("files").clear().onsuccess = () => {
+    function putFile(path: string, file: string, contents: any) {
+        return store.openDB().then((db) =>
+            db.transaction("files", "readwrite").objectStore("files").put({
+                name: file,
+                path,
+                file: { path: [path], fileName: file, contents }
+            }, path + "/" + file)
+        );
+    }
+
+    it("should load a file", (done) => {
+        putFile("path", "file", "foo").then((req) => {
+            req.onsuccess = () => {
+                store.getFile({ path: ["path"], fileName: "file"}).then((result) => {
+                    expect(typeof result).to.equal("object");
+                    expect(typeof result?.path).to.equal("object");
+                    expect(result?.path[0]).to.equal("path");
+                    expect(result?.fileName).to.equal("file");
+                    expect(result?.contents).to.equal("foo");
                     done();
-                };
-            }).catch((e) => done(new Error(e)));
-        });
+                }).catch((e) => done(new Error(e)));
+            };
+        }).catch((e) => done(new Error(e)));
+    });
 
-        function putFile(path: string, file: string, contents: any) {
-            return store.openDB().then((db) =>
-                db.transaction("files", "readwrite").objectStore("files").put({
-                    name: file,
-                    path,
-                    file: { path: [path], fileName: file, contents }
-                }, path + "/" + file)
-            );
-        }
+    it("should provide an error when loading an non-existent file", (done) => {
+        store.getFile({ path: ["no-such-path"], fileName: "no-such-file"}).then((result) => {
+            expect(result).to.be.a("null");
+            done();
+        }).catch((e) => done(e instanceof Error ? e : new Error(JSON.stringify(e))));
+    });
 
-        it("should load a file", (done) => {
-            putFile("path", "file", "foo").then((req) => {
-                req.onsuccess = () => {
-                    store.getFile({ path: ["path"], fileName: "file"}).then((result) => {
-                        expect(typeof result).to.equal("object");
-                        expect(typeof result?.path).to.equal("object");
-                        expect(result?.path[0]).to.equal("path");
-                        expect(result?.fileName).to.equal("file");
-                        expect(result?.contents).to.equal("foo");
+    it("should save a file", (done) => {
+        store.putFile({
+            path: ["path"],
+            fileName: "file2",
+            contents: "bar"
+        }).then((result) => {
+            expect(result).to.be.an("object");
+            store.openDB().then((db) => {
+                const req = db.transaction("files").objectStore("files").get("path/file2");
+                req.onerror = done;
+                req.onsuccess = (e) => {
+                    try {
+                        expect(typeof e).to.equal("object");
+                        expect(typeof e.target).to.equal("object");
+                        const res = (e.target as any).result;
+                        expect(typeof res).to.equal("object");
+                        expect(res.file).to.be.an("object");
+                        expect(res.path).to.equal("path");
+                        expect(res.name).to.equal("file2");
+                        expect(res.file.path[0]).to.equal("path");
+                        expect(res.file.fileName).to.equal("file2");
+                        expect(res.file.contents).to.equal("bar");
                         done();
-                    }).catch((e) => done(new Error(e)));
+                    } catch (err) {
+                        done(err);
+                    }
                 };
-            }).catch((e) => done(new Error(e)));
-        });
-
-        it("should provide an error when loading an non-existent file", (done) => {
-            store.getFile({ path: ["no-such-path"], fileName: "no-such-file"}).then((result) => {
-                expect(result).to.be.a("null");
-                done();
-            }).catch((e) => done(e instanceof Error ? e : new Error(JSON.stringify(e))));
-        });
-
-        it("should save a file", (done) => {
-            store.putFile({
-                path: ["path"],
-                fileName: "file2",
-                contents: "bar"
-            }).then((result) => {
-                expect(result).to.be.an("object");
-                store.openDB().then((db) => {
-                    const req = db.transaction("files").objectStore("files").get("path/file2");
-                    req.onerror = done;
-                    req.onsuccess = (e) => {
-                        try {
-                            expect(typeof e).to.equal("object");
-                            expect(typeof e.target).to.equal("object");
-                            const res = (e.target as any).result;
-                            expect(typeof res).to.equal("object");
-                            expect(res.file).to.be.an("object");
-                            expect(res.path).to.equal("path");
-                            expect(res.name).to.equal("file2");
-                            expect(res.file.path[0]).to.equal("path");
-                            expect(res.file.fileName).to.equal("file2");
-                            expect(res.file.contents).to.equal("bar");
-                            done();
-                        } catch (err) {
-                            done(err);
-                        }
-                    };
-                });
-            }).catch((e) => done(new Error(e)));
-        });
-
-        it("should save and restore a document", (done) => {
-            const original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
-            const sync = new storage.LocalSync(store);
-            sync.saveLocal(original).then((documentID) => {
-                return sync.restoreLocal(documentID);
-            }).then((restored) => {
-                compareObjects(getData(original), getData(restored));
-                expect(original.getClientID()).to.equal(restored.getClientID());
-                done();
-            }).catch((reason) => {
-                done(new Error(reason));
             });
-        });
+        }).catch((e) => done(new Error(e)));
+    });
 
+    it("should save and restore a document", (done) => {
+        const original = minisync.from({v: [1, 2, {foo: "bar"}, 4, 5]});
+        const sync = new storage.LocalSync(store);
+        sync.saveLocal(original).then((documentID) => {
+            return sync.restoreLocal(documentID);
+        }).then((restored) => {
+            compareObjects(getData(original), getData(restored));
+            expect(original.getClientID()).to.equal(restored.getClientID());
+            done();
+        }).catch((reason) => {
+            done(new Error(reason));
+        });
     });
 
 });

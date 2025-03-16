@@ -7,7 +7,7 @@ import { SyncableArray } from "./syncable";
 
 const expect = chai.expect;
 
-describe("minisync p2p", () => {
+describe("peer to peer", () => {
 
     describe("client interaction", () => {
 

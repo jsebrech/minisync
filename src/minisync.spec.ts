@@ -8,7 +8,7 @@ const expect = chai.expect;
 // don't log debug output
 minisync.defaultLogger().level = 'warn';
 
-describe("minisync core", () => {
+describe("core", () => {
 
     describe("object handling", () => {
 
