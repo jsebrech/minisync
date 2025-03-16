@@ -9,7 +9,6 @@ const expect = chai.expect;
 
 // load indexeddb in node environment
 // https://github.com/axemclion/IndexedDBShim
-// tslint:disable-next-line:no-var-requires
 const setGlobalVars = require("indexeddbshim");
 (global as any).window = global;
 setGlobalVars(null, {

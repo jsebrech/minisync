@@ -7,7 +7,6 @@ import * as storage from "../index";
 import { Store } from "../types";
 
 // load localstorage shim
-// tslint:disable-next-line:no-var-requires
 require("localstorage-polyfill");
 
 const expect = chai.expect;
