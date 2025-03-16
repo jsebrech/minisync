@@ -1,6 +1,6 @@
 {
   "name": "@jsebrech/minisync",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "P2P JSON synchronization library",
   "main": "dist/lib/minisync.js",
   "module": "dist/lib-esm/minisync.js",
@@ -14,7 +14,7 @@
     "chai": "^5.2.0",
     "cross-fetch": "^3.1.4",
     "dotenv": "^6.2.0",
-    "dropbox": "^4.0.30",
+    "dropbox": "^10.0.0",
     "indexeddbshim": "^8.0.0",
     "localstorage-polyfill": "^1.0.1",
     "mocha": "^11.1.0",

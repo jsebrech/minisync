@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import { fetch, Response } from "cross-fetch";
-import { Dropbox } from "dropbox";
+import { Dropbox, DropboxResponse, files } from "dropbox";
 
 import * as minisync from "../../minisync";
 import { compareObjects, getData } from "../../test-utils";
@@ -32,7 +32,7 @@ describe("minisync storage", () => {
             dbx = new Dropbox({ accessToken, fetch });
             store = new DropboxStore(dbx, testRoot, Response);
             return dbx.filesGetMetadata({ path: "/" + testRoot }).then(() => {
-                return dbx.filesDelete({ path: "/" + testRoot });
+                return dbx.filesDeleteV2({ path: "/" + testRoot });
             }).catch(() => true);
         });
 
@@ -76,7 +76,9 @@ describe("minisync storage", () => {
                 // download file and check contents
                 dbx.filesDownload({
                     path: "/" + testRoot + "/path/file2"
-                }).then((f: any) => { // DropboxTypes.files.FileMetadata
+                }).then((response: DropboxResponse<files.FileMetadata>) => {
+                    expect(response.result).to.be.an("object");
+                    const f: any = response.result;
                     // in node it returns a fileBinary
                     if (f.fileBinary) {
                         return f.fileBinary;

@@ -1,4 +1,4 @@
-import { Dropbox } from "dropbox";
+import { Dropbox, DropboxResponse, files, sharing } from "dropbox";
 import { FileData, FileHandle, RemoteFileHandle, RemoteStore } from "../types";
 
 export class DropboxStore implements RemoteStore {
@@ -19,7 +19,7 @@ export class DropboxStore implements RemoteStore {
             path: this.pathToString(file.path) + file.fileName,
             contents: file.contents,
             mode: { ".tag": "overwrite" }
-        }).then(async (s: any) => {
+        }).then(async () => {
             return {
                 path: file.path,
                 fileName: file.fileName,
@@ -31,8 +31,8 @@ export class DropboxStore implements RemoteStore {
     public getFile(file: FileHandle): Promise<FileData|null> {
         return this.dropbox.filesDownload({
             path: this.pathToString(file.path) + file.fileName
-        }).then((f: DropboxTypes.files.FileMetadata) => {
-            return this.dataFromFileMeta(f);
+        }).then((f: DropboxResponse<files.FileMetadata>) => {
+            return this.dataFromFileMeta(f.result);
         }).then((t: string) => {
             return {
                 path: file.path,
@@ -49,20 +49,21 @@ export class DropboxStore implements RemoteStore {
 
     public listFiles(path: string[]): Promise<FileHandle[]> {
         const handle = (
-            res: DropboxTypes.files.ListFolderResult,
-            list?: DropboxTypes.files.FileMetadataReference[]
-        ): Promise<DropboxTypes.files.FileMetadataReference[]> => {
-            if (res.has_more) {
-                return this.dropbox.filesListFolderContinue({ cursor: res.cursor }).then(handle);
+            response: DropboxResponse<files.ListFolderResult>,
+            list?: files.FileMetadataReference[]
+        ): Promise<files.FileMetadataReference[]> => {
+            const { result } = response;
+            if (result.has_more) {
+                return this.dropbox.filesListFolderContinue({ cursor: result.cursor }).then(handle);
             } else {
                 return Promise.resolve(
-                    res.entries.filter((f) => f[".tag"] === "file").concat(list || [])
+                    result.entries.filter((f) => f[".tag"] === "file").concat(list || [])
                 );
             }
         };
         return this.dropbox.filesListFolder({ path: this.pathToString(path) })
             .then(handle)
-            .then((files: DropboxTypes.files.FileMetadataReference[]) => {
+            .then((files: files.FileMetadataReference[]) => {
                 return files.map((f) => ({ path, fileName: f.name }));
             });
     }
@@ -71,8 +72,8 @@ export class DropboxStore implements RemoteStore {
     public canDownloadUrl(url: string): Promise<boolean> {
         if (/^https:\/\/www\.dropbox\.com/.test(url)) {
             return this.dropbox.sharingGetSharedLinkMetadata({ url }).then(
-                (res: DropboxTypes.sharing.SharedLinkMetadataReference) => {
-                    return !!res;
+                (response: DropboxResponse<sharing.SharedLinkMetadataReference>) => {
+                    return !!response.result;
                 }
             ).catch((e) => false);
         } else return Promise.resolve(false);
@@ -81,8 +82,8 @@ export class DropboxStore implements RemoteStore {
     /** Downloads the given URL and returns the enclosed data */
     public downloadUrl(url: string): Promise<string> {
         return this.dropbox.sharingGetSharedLinkFile({ url }).then(
-            (res: DropboxTypes.sharing.SharedLinkMetadataReference) => {
-                return this.dataFromFileMeta(res);
+            (response: DropboxResponse<sharing.SharedLinkMetadataReference>) => {
+                return this.dataFromFileMeta(response.result);
             });
     }
 
@@ -90,7 +91,7 @@ export class DropboxStore implements RemoteStore {
     private publishFile(file: FileHandle): Promise<string> {
         return this.dropbox.sharingCreateSharedLink({
             path: this.pathToString(file.path) + file.fileName
-        }).then((meta) => meta.url);
+        }).then((response) => response.result.url);
     }
 
     /**
@@ -106,7 +107,7 @@ export class DropboxStore implements RemoteStore {
      * @param file The file's metadata
      */
     private dataFromFileMeta(
-        file: DropboxTypes.files.FileMetadata | DropboxTypes.sharing.SharedFileMetadata | any
+        file: files.FileMetadata | sharing.SharedFileMetadata | any
     ): Promise<string> {
         // in node it returns a fileBinary
         if (file.fileBinary) {
